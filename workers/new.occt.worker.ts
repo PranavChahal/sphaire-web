@@ -1,30 +1,26 @@
-/**
- * occt.worker.ts
- * Full-featured OpenCascade.js worker for AI-driven CAD scripting
- */
+
 
 import initOpenCascade from 'opencascade.js';
 type OpenCascadeInstance = any;
 
 declare const self: Worker & { postMessage: any; };
 
-// Toggle detailed logging
+
 const DEBUG = false;
 function log(...args: any[]) { if (DEBUG) console.log('[OCCT-WORKER]', ...args); }
 
-// Raw OpenCascade.js instance and wrapper
+
 let oc: OpenCascadeInstance;
 let occ: Record<string, any>;
 
-// Ensure single initialization
 let initPromise: Promise<void> | null = null;
 
-// Queue for execution requests
+
 type ExecRequest = { id: string; code: string };
 const queue: ExecRequest[] = [];
 let processing = false;
 
-// Helper: Calculate face normal for lighting
+
 function calculateFaceNormal(surface: any, face: any, oc: OpenCascadeInstance) {
   try {
     const uMin = surface.FirstUParameter();
@@ -39,71 +35,67 @@ function calculateFaceNormal(surface: any, face: any, oc: OpenCascadeInstance) {
     
     if (props.IsNormalDefined()) {
       const normal = props.Normal();
-      // Adjust normal based on face orientation
+     
       if (face.Orientation_1() === oc.TopAbs_Orientation.TopAbs_REVERSED) {
         return new oc.gp_Dir_4(-normal.X(), -normal.Y(), -normal.Z());
       }
       return new oc.gp_Dir_4(normal.X(), normal.Y(), normal.Z());
     }
   } catch (e) {
-    // Default upward normal
+    
     return new oc.gp_Dir_4(0, 0, 1);
   }
   
-  // Default upward normal
+
   return new oc.gp_Dir_4(0, 0, 1);
 }
 
-// Helper: Create fallback mesh when tessellation fails
 function createFallbackBox() {
   const vertices = new Float32Array([
-    // Front face
-    -1, -1,  1,   1, -1,  1,   1,  1,  1,  -1,  1,  1,
-    // Back face  
+    
+    -1, -1,  1,   1, -1,  1,   1,  1,  1,  -1,  1,  1, 
     -1, -1, -1,  -1,  1, -1,   1,  1, -1,   1, -1, -1,
-    // Top face
+  
     -1,  1, -1,  -1,  1,  1,   1,  1,  1,   1,  1, -1,
-    // Bottom face
+    
     -1, -1, -1,   1, -1, -1,   1, -1,  1,  -1, -1,  1,
-    // Right face
+    
      1, -1, -1,   1,  1, -1,   1,  1,  1,   1, -1,  1,
-    // Left face
+ 
     -1, -1, -1,  -1, -1,  1,  -1,  1,  1,  -1,  1, -1
   ]);
   
   const normals = new Float32Array([
-    // Front face
+    
      0,  0,  1,   0,  0,  1,   0,  0,  1,   0,  0,  1,
-    // Back face
+    
      0,  0, -1,   0,  0, -1,   0,  0, -1,   0,  0, -1,
-    // Top face  
+     
      0,  1,  0,   0,  1,  0,   0,  1,  0,   0,  1,  0,
-    // Bottom face
+    
      0, -1,  0,   0, -1,  0,   0, -1,  0,   0, -1,  0,
-    // Right face
+    
      1,  0,  0,   1,  0,  0,   1,  0,  0,   1,  0,  0,
-    // Left face
+   
     -1,  0,  0,  -1,  0,  0,  -1,  0,  0,  -1,  0,  0
   ]);
   
   const indices = new Uint32Array([
-     0,  1,  2,   0,  2,  3,    // Front
-     4,  5,  6,   4,  6,  7,    // Back
-     8,  9, 10,   8, 10, 11,    // Top
-    12, 13, 14,  12, 14, 15,    // Bottom
-    16, 17, 18,  16, 18, 19,    // Right
-    20, 21, 22,  20, 22, 23     // Left
+     0,  1,  2,   0,  2,  3,    ]
+     4,  5,  6,   4,  6,  7,   
+     8,  9, 10,   8, 10, 11,   
+    12, 13, 14,  12, 14, 15,    
+    16, 17, 18,  16, 18, 19,    
+    20, 21, 22,  20, 22, 23     
   ]);
   
   return { vertices, normals, indices };
 }
 
-/**
- * Build the high-level occ API wrapper around raw OCCT bindings
- */
+
 function createOccWrapper(oc: OpenCascadeInstance) {
   return {
-    // Primitives
+    
     createBox: (width: number, depth: number, height: number, center = false) => {
       const origin = center
         ? new oc.gp_Pnt_3(-width/2, -depth/2, -height/2)
@@ -139,7 +131,7 @@ function createOccWrapper(oc: OpenCascadeInstance) {
       const torusMaker = new oc.BRepPrimAPI_MakeTorus_3(ax2, rMajor, rMinor);
       return torusMaker.Shape();
     },
-    // Wire & curve
+    
     createCircle: (r: number, center = [0,0,0], normal = [0,0,1]) => {
       const cen = new oc.gp_Pnt_3(center[0], center[1], center[2]);
       const dir = new oc.gp_Dir_4(normal[0], normal[1], normal[2]);
@@ -152,7 +144,7 @@ function createOccWrapper(oc: OpenCascadeInstance) {
       const a = new oc.gp_Pnt_3(p1[0], p1[1], p1[2]||0);
       const b = new oc.gp_Pnt_3(p2[0], p2[1], p2[2]||0);
       const edge = new oc.BRepBuilderAPI_MakeEdge_3(a, b).Edge();
-      // Return as Wire for sweep compatibility
+      
       return new oc.BRepBuilderAPI_MakeWire_2(edge).Wire();
     },
     createArc: (center: number[], r: number, start: number, end: number) => {
@@ -215,17 +207,16 @@ function createOccWrapper(oc: OpenCascadeInstance) {
           ptArray.SetValue(i + 1, new oc.gp_Pnt_3(p[0], p[1], p[2] || 0));
         });
         
-        // Create B-spline geometry
+       
         const splineApi = new oc.GeomAPI_PointsToBSpline_1(ptArray);
         const bsplineCurve = splineApi.Curve();
         
-        // Convert Handle_Geom_BSplineCurve to Handle_Geom_Curve properly
-        // Use the correct MakeEdge constructor that accepts BSpline curves
+        
         const edge = new oc.BRepBuilderAPI_MakeEdge_25(bsplineCurve).Edge();
         return new oc.BRepBuilderAPI_MakeWire_2(edge).Wire();
       } catch (error) {
         log('Spline creation failed, creating approximation with line segments:', error);
-        // Fallback: create approximation with line segments
+        
         const wb = new oc.BRepBuilderAPI_MakeWire_1();
         for (let i = 0; i < points.length - 1; i++) {
           const p1 = points[i];
@@ -250,37 +241,33 @@ function createOccWrapper(oc: OpenCascadeInstance) {
       try {
         log(`🔧 Creating helix via cylinder + pcurve method: radius=${radius}, pitch=${pitch}, height=${height}`);
         
-        // EXPERT SOLUTION: Use cylinder + parametric curve approach
-        // This avoids Handle_Geom_BSplineCurve binding issues entirely
+     
         
         const turns = height / pitch;
         const totalAngle = turns * 2 * Math.PI;
          
-        // Step 1: Create cylindrical surface
+      
         const centerPnt = new oc.gp_Pnt_3(center[0], center[1], center[2]);
         const zAxis = new oc.gp_Dir_4(0, 0, 1);
         const cylinderAxis = new oc.gp_Ax2_3(centerPnt, zAxis);
         const cylinderSurface = new oc.Geom_CylindricalSurface_2(cylinderAxis, radius);
         
-        // Step 2: Create 2D parametric line in cylinder's UV space
-        // U parameter = angle (0 to totalAngle)
-        // V parameter = height (0 to height)
-        // Slope of line determines pitch: dV/dU = pitch/(2π)
+  
         const startPoint2D = new oc.gp_Pnt2d_2(0, 0);
         const endPoint2D = new oc.gp_Pnt2d_2(totalAngle, height);
         const line2D = new oc.GC_MakeSegment_1(startPoint2D, endPoint2D).Value();
         
         log(`📐 2D parametric line: U(0 → ${totalAngle.toFixed(2)}), V(0 → ${height})`);
         
-        // Step 3: Create 3D helical edge from 2D curve on cylinder surface
+        
         const helicalEdge = new oc.BRepBuilderAPI_MakeEdge_15(
-          line2D,           // 2D curve in parameter space
-          cylinderSurface,  // Cylindrical surface
-          0,                // Start parameter
-          Math.sqrt(totalAngle * totalAngle + height * height) // Arc length parameter
+          line2D,          
+          cylinderSurface,  
+          0,                
+          Math.sqrt(totalAngle * totalAngle + height * height) 
         ).Edge();
         
-        // Step 4: Create wire from the helical edge
+        
         const helixWire = new oc.BRepBuilderAPI_MakeWire_2(helicalEdge).Wire();
         
         log('✅ Expert helix created successfully via cylinder + pcurve method!');
@@ -291,12 +278,12 @@ function createOccWrapper(oc: OpenCascadeInstance) {
       } catch (primaryError) {
         log('⚠️ Primary cylinder + pcurve method failed:', primaryError);
         
-        // Fallback 1: Try discrete segment approximation
+    
         try {
           log('🔄 Attempting discrete helix approximation...');
           
           const turns = height / pitch;
-          const segmentsPerTurn = 32; // Higher resolution
+          const segmentsPerTurn = 32;
           const totalSegments = Math.max(8, Math.ceil(turns * segmentsPerTurn));
           
           const wb = new oc.BRepBuilderAPI_MakeWire_1();
@@ -325,19 +312,19 @@ function createOccWrapper(oc: OpenCascadeInstance) {
             wb.Add_1(edge);
           }
           
-          log('✅ Discrete helix approximation created successfully');
+          log(' Discrete helix approximation created successfully');
           return wb.Wire();
           
         } catch (fallbackError) {
-          log('❌ Discrete helix fallback also failed:', fallbackError);
+          log(' Discrete helix fallback also failed:', fallbackError);
           
-          // Fallback 2: Simple vertical line
+          
           const startPnt = new oc.gp_Pnt_3(center[0], center[1], center[2]);
           const endPnt = new oc.gp_Pnt_3(center[0], center[1], center[2] + height);
           const verticalEdge = new oc.BRepBuilderAPI_MakeEdge_3(startPnt, endPnt).Edge();
           const verticalWire = new oc.BRepBuilderAPI_MakeWire_2(verticalEdge).Wire();
           
-          log('🔄 Using simple vertical line as ultimate fallback');
+          log(' Using simple vertical line as ultimate fallback');
           return verticalWire;
         }
       }
@@ -350,32 +337,32 @@ function createOccWrapper(oc: OpenCascadeInstance) {
     createFaceFromWire: (wire: any) => {
       return new oc.BRepBuilderAPI_MakeFace_2(wire).Shape();
     },
-    // Extrude & revolve - supports both linear and helical extrusion
+   
     extrude: (shape: any, params: number[]|{dx:number,dy:number,dz:number}|{height:number,pitch?:number,radius?:number}) => {
       try {
-        // Handle different parameter types
+        
         if (Array.isArray(params)) {
-          // Linear extrusion with vector array [dx, dy, dz]
+          
           const [dx, dy, dz] = params;
           const vec = new oc.gp_Vec_4(dx, dy, dz);
           return new oc.BRepPrimAPI_MakePrism_1(shape, vec, false, true).Shape();
         } else if (typeof params === 'object') {
-          // Check if it's helical extrusion parameters
+          
           if ('height' in params && ('pitch' in params || 'radius' in params)) {
-            // Helical extrusion - create helical sweep
+            
             const height = params.height;
-            const pitch = params.pitch || 0.2; // Default pitch
-            const radius = params.radius || 1.0; // Default radius
+            const pitch = params.pitch || 0.2; 
+            const radius = params.radius || 1.0; 
             
             log(`Creating helical extrusion: height=${height}, pitch=${pitch}, radius=${radius}`);
             
-            // Create helical path
+    
             const helixPath = occ.createHelix(radius, pitch, height);
             
-            // Perform sweep along helical path
+         
             return occ.sweep(shape, helixPath);
           } else if ('dx' in params && 'dy' in params && 'dz' in params) {
-            // Linear extrusion with object {dx, dy, dz}
+          
             const { dx, dy, dz } = params;
             const vec = new oc.gp_Vec_4(dx, dy, dz);
             return new oc.BRepPrimAPI_MakePrism_1(shape, vec, false, true).Shape();
@@ -387,8 +374,8 @@ function createOccWrapper(oc: OpenCascadeInstance) {
         }
       } catch (error) {
         log('Extrude operation failed:', error);
-        // Return a simple linear extrusion as fallback
-        const vec = new oc.gp_Vec_4(0, 0, 1); // Default Z-direction
+    
+        const vec = new oc.gp_Vec_4(0, 0, 1); 
         return new oc.BRepPrimAPI_MakePrism_1(shape, vec, false, true).Shape();
       }
     },
@@ -397,33 +384,33 @@ function createOccWrapper(oc: OpenCascadeInstance) {
         let ax1;
         
         if (args.length === 3) {
-          // AI-expected signature: revolve(shape, point, direction, angle)
+          
           const [point, direction, angle] = args;
           log(`Revolve with AI signature: point=[${point}], direction=[${direction}], angle=${angle}`);
           
           const pnt = Array.isArray(point) ? 
             new oc.gp_Pnt_3(point[0] || 0, point[1] || 0, point[2] || 0) : 
-            new oc.gp_Pnt_1(); // Default origin
+            new oc.gp_Pnt_1(); 
           
           const dir = Array.isArray(direction) ? 
             new oc.gp_Dir_4(direction[0] || 0, direction[1] || 0, direction[2] || 1) : 
-            new oc.gp_Dir_4(0, 0, 1); // Default Z-axis
+            new oc.gp_Dir_4(0, 0, 1); 
           
           ax1 = new oc.gp_Ax1_2(pnt, dir);
           const angleRad = (angle || 360) * Math.PI / 180;
           return new oc.BRepPrimAPI_MakeRevol_1(shape, ax1, angleRad).Shape();
           
         } else if (args.length === 2) {
-          // Current signature: revolve(shape, axisDef, angle)
+     
           const [axisDef, angle] = args;
           log(`Revolve with current signature: axisDef=${typeof axisDef}, angle=${angle}`);
           
           if (Array.isArray(axisDef)) {
-            // axisDef is direction array
+         
             const dir = new oc.gp_Dir_4(axisDef[0] || 0, axisDef[1] || 0, axisDef[2] || 1);
             ax1 = new oc.gp_Ax1_2(new oc.gp_Pnt_1(), dir);
           } else if (axisDef && typeof axisDef === 'object') {
-            // axisDef is object with point and direction
+            
             const p = axisDef.point || [0, 0, 0];
             const d = axisDef.direction || [0, 0, 1];
             ax1 = new oc.gp_Ax1_2(
@@ -443,11 +430,11 @@ function createOccWrapper(oc: OpenCascadeInstance) {
         
       } catch (error) {
         log('Revolve operation failed:', error);
-        // Return the original shape as fallback
+        
         return shape;
       }
     },
-    // Sweep & loft
+
     sweep: (profile: any, path: any) => {
       return new oc.BRepOffsetAPI_MakePipe_1(path, profile).Shape();
     },
@@ -457,7 +444,7 @@ function createOccWrapper(oc: OpenCascadeInstance) {
       loft.Build_1();
       return loft.Shape();
     },
-    // Transformations
+
     translate: (shape: any, v: number[]|{dx:number,dy:number,dz:number}) => {
       const [dx,dy,dz] = Array.isArray(v)? v: [v.dx,v.dy,v.dz];
       const tr = new oc.gp_Trsf_1(); tr.SetTranslation_1(new oc.gp_Vec_4(dx,dy,dz));
@@ -477,15 +464,15 @@ function createOccWrapper(oc: OpenCascadeInstance) {
       const tr = new oc.gp_Trsf_1(); tr.SetMirror_2(ax2);
       return new oc.BRepBuilderAPI_Transform_2(shape, tr, false).Shape();
     },
-    // Booleans (handle both array and variadic signatures)
+   
     union: (...args: any[]) => {
-      // Handle both union([s1, s2]) and union(s1, s2)
+
       const shapes = args.length === 1 && Array.isArray(args[0]) ? args[0] : args;
       if (shapes.length < 2) return shapes[0];
       return shapes.reduce((acc, s) => new oc.BRepAlgoAPI_Fuse_3(acc, s).Shape(), shapes[0]);
     },
     difference: (base: any, ...cutterArgs: any[]) => {
-      // Handle both difference(base, [c1, c2]) and difference(base, c1, c2)
+
       const cutters = cutterArgs.length === 1 && Array.isArray(cutterArgs[0]) ? cutterArgs[0] : cutterArgs;
       if (cutters.length === 0) return base;
       return cutters.reduce((acc, c) => new oc.BRepAlgoAPI_Cut_3(acc, c).Shape(), base);
@@ -493,7 +480,7 @@ function createOccWrapper(oc: OpenCascadeInstance) {
     intersect: (shapes: any[]) => {
       return shapes.reduce((acc, s) => new oc.BRepAlgoAPI_Common_3(acc, s).Shape(), shapes[0]);
     },
-    // Pattern
+
     circularPattern: (shape: any, count: number, axis: number[]) => {
       let res = shape;
       for (let i=1; i<count; i++) {
@@ -521,14 +508,14 @@ function createOccWrapper(oc: OpenCascadeInstance) {
       }
       return res;
     },
-    // Advanced operations
+
     fillet: (shape: any, radius: number, edges?: any[]) => {
       try {
         const filletMaker = new oc.BRepFilletAPI_MakeFillet(shape);
         if (edges && edges.length > 0) {
           edges.forEach(edge => filletMaker.Add_2(radius, edge));
         } else {
-          // If no specific edges, try to fillet all edges
+     
           const explorer = new oc.TopExp_Explorer_2(shape, oc.TopAbs_ShapeEnum.TopAbs_EDGE as any, oc.TopAbs_ShapeEnum.TopAbs_SHAPE as any);
           while (explorer.More()) {
             filletMaker.Add_2(radius, explorer.Current());
@@ -547,7 +534,7 @@ function createOccWrapper(oc: OpenCascadeInstance) {
         if (edges && edges.length > 0) {
           edges.forEach(edge => chamferMaker.Add_2(distance, edge));
         } else {
-          // If no specific edges, try to chamfer all edges
+        
           const explorer = new oc.TopExp_Explorer_2(shape, oc.TopAbs_ShapeEnum.TopAbs_EDGE as any, oc.TopAbs_ShapeEnum.TopAbs_SHAPE as any);
           while (explorer.More()) {
             chamferMaker.Add_2(distance, explorer.Current());
@@ -574,10 +561,10 @@ function createOccWrapper(oc: OpenCascadeInstance) {
         return shape;
       }
     },
-    // Tessellation - extract mesh data from OpenCascade shapes
+
     tessellate: (shape: any, linear = 0.1, angular = 0.5) => {
       try {
-        // Apply incremental mesh generation
+
         new oc.BRepMesh_IncrementalMesh(shape, linear, false, angular, false);
         
         const vertices: number[] = [];
@@ -585,7 +572,7 @@ function createOccWrapper(oc: OpenCascadeInstance) {
         const indices: number[] = [];
         let vertexIndex = 0;
         
-        // Iterate through all faces in the shape
+        
         const faceExplorer = new oc.TopExp_Explorer_2(
           shape, 
           oc.TopAbs_ShapeEnum.TopAbs_FACE as any, 
@@ -595,21 +582,21 @@ function createOccWrapper(oc: OpenCascadeInstance) {
         while (faceExplorer.More()) {
           const face = oc.TopoDS.Face_1(faceExplorer.Current());
           
-          // Get triangulation data from face
+
           const location = new oc.TopLoc_Location_1();
           const triangulation = oc.BRep_Tool.Triangulation(face, location);
           
           if (!triangulation.IsNull()) {
             const transform = location.Transformation();
             
-            // Extract vertex positions
+    
             const nodeCount = triangulation.get().NbNodes();
             const nodes = triangulation.get().Nodes();
             
             for (let i = 1; i <= nodeCount; i++) {
               let pnt = nodes.Value(i);
               
-              // Apply location transformation if present
+         
               if (!location.IsIdentity()) {
                 pnt = pnt.Transformed(transform);
               }
@@ -617,28 +604,27 @@ function createOccWrapper(oc: OpenCascadeInstance) {
               vertices.push(pnt.X(), pnt.Y(), pnt.Z());
             }
             
-            // Calculate face normal for lighting
+          
             const surface = oc.BRep_Tool.Surface_2(face);
             const faceNormal = calculateFaceNormal(surface, face, oc);
-            
-            // Add normals for each vertex (simplified - using face normal)
+     
             for (let i = 0; i < nodeCount; i++) {
               normals.push(faceNormal.X(), faceNormal.Y(), faceNormal.Z());
             }
             
-            // Extract triangle indices
+
             const triangleCount = triangulation.get().NbTriangles();
             const triangles = triangulation.get().Triangles();
             
             for (let i = 1; i <= triangleCount; i++) {
               const triangle = triangles.Value(i);
-              let n1 = triangle.Value(1) - 1; // Convert to 0-based
+              let n1 = triangle.Value(1) - 1; 
               let n2 = triangle.Value(2) - 1;
               let n3 = triangle.Value(3) - 1;
               
-              // Check face orientation and flip if needed
+
               if (face.Orientation_1() === oc.TopAbs_Orientation.TopAbs_REVERSED) {
-                [n2, n3] = [n3, n2]; // Flip winding order
+                [n2, n3] = [n3, n2];
               }
               
               indices.push(
@@ -664,14 +650,14 @@ function createOccWrapper(oc: OpenCascadeInstance) {
         
       } catch (error) {
         log('Tessellation failed:', error);
-        // Return fallback box mesh data
+     
         return createFallbackBox();
       }
     }
   };
 }
 
-/** Initialize OpenCascade.js and wrapper once */
+
 async function initialize(): Promise<void> {
   if (initPromise) return initPromise;
   initPromise = (async () => {
@@ -682,20 +668,19 @@ async function initialize(): Promise<void> {
   return initPromise;
 }
 
-/** Clean code by removing invalid top-level return statements */
+
 function cleanCode(code: string): string {
   try {
-    // Remove top-level return statements that cause syntax errors
+   
     const lines = code.split('\n');
     const cleanedLines = lines.filter((line, index) => {
       const trimmed = line.trim();
       
-      // Skip empty lines and comments
       if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('/*')) {
         return true;
       }
       
-      // Remove top-level return statements
+   
       if (trimmed.startsWith('return ') || trimmed === 'return;') {
         log(`🧹 Removed invalid top-level return at line ${index + 1}: ${trimmed}`);
         return false;
@@ -706,9 +691,9 @@ function cleanCode(code: string): string {
     
     const cleaned = cleanedLines.join('\n');
     
-    // Add automatic tessellation if code doesn't end with tessellation
+ 
     if (!cleaned.includes('tessellate') && !cleaned.includes('return')) {
-      // Find the last variable assignment that looks like a shape
+
       const shapeVariables = [];
       const variableRegex = /(?:const|let|var)\s+(\w+)\s*=\s*occ\.(union|difference|intersect|extrude|revolve|sweep|create\w+)/g;
       let match;
@@ -718,7 +703,7 @@ function cleanCode(code: string): string {
       
       if (shapeVariables.length > 0) {
         const lastShape = shapeVariables[shapeVariables.length - 1];
-        log(`🔧 Auto-adding tessellation for shape: ${lastShape}`);
+        log(` Auto-adding tessellation for shape: ${lastShape}`);
         return cleaned + `\n\n// Auto-tessellate the final shape\nconst tessellated = occ.tessellate(${lastShape});`;
       }
     }
@@ -726,23 +711,23 @@ function cleanCode(code: string): string {
     return cleaned;
     
   } catch (error) {
-    log('⚠️ Code cleaning failed, using original:', error);
+    log(' Code cleaning failed, using original:', error);
     return code;
   }
 }
 
-/** Sequentially process execution queue */
+
 async function processQueue(): Promise<void> {
   if (processing) return;
   processing = true;
   while (queue.length) {
     const { id, code } = queue.shift()!;
     try {
-      // Clean the code before execution
+
       const cleanedCode = cleanCode(code);
-      log(`🧹 Cleaned code length: ${cleanedCode.length} chars`);
+      log(` Cleaned code length: ${cleanedCode.length} chars`);
       
-      // Create and execute the function
+
       const fn = new Function('occ', `'use strict';\n${cleanedCode}`);
       const resultShape = fn(occ);
       const meshData = occ.tessellate(resultShape);
@@ -755,7 +740,6 @@ async function processQueue(): Promise<void> {
   processing = false;
 }
 
-/** Worker message handler */
 self.onmessage = async (ev: MessageEvent) => {
   const msg = ev.data as { type: string; id?: string; code?: string };
   if (msg.type === 'init') {
@@ -773,5 +757,5 @@ self.onmessage = async (ev: MessageEvent) => {
   }
 };
 
-// Auto-start init
+
 initialize().catch(() => {});
