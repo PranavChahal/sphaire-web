@@ -1,0 +1,40 @@
+# Exclude llm-server and build artifacts
+llm-server/
+*.cpp
+*.cmake
+CMakeFiles/
+build/
+*.o
+*.a
+*.so
+*.dylib
+
+# Exclude other non-deployable files
+.git/
+node_modules/
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Exclude development files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Exclude IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Exclude OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

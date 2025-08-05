@@ -1,0 +1,44 @@
+{
+  "compilerOptions": {
+    "target": "es5",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitAny": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "downlevelIteration": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"]
+    }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
+  "exclude": [
+    "node_modules",
+    "**/*_BACKUP.tsx",
+    "**/*_BROKEN_BACKUP.tsx",
+    "**/*_BULLETPROOF.tsx",
+    "__tests__/**/*",
+    "llm-server/**/*",
+    "**/build/**/*",
+    "**/CMakeFiles/**/*",
+    "**/*.cmake",
+    "**/*.cpp",
+    "**/*.c",
+    "workers/occt.worker.old.ts",
+    "**/*.h"
+  ]
+}
