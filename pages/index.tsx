@@ -8,7 +8,7 @@ import CodeViewer from '../components/CodeViewer';
 import VoiceModule from '../components/VoiceModule';
 import { useUIStore } from '../store/uiStore';
 import { ModalProvider } from '../contexts/ModalContext';
-import ProtectedRoute from '../components/ProtectedRoute';
+
 
 const Home: NextPage = () => {
   console.log('🔍 Rendering Home component');
@@ -27,8 +27,7 @@ const Home: NextPage = () => {
   
   console.log('🔍 Home component useEffect setup complete');
   return (
-    <ProtectedRoute>
-      <ModalProvider>
+    <ModalProvider>
         <div className="h-screen w-screen flex flex-col bg-gray-900 text-white overflow-hidden">
           <Head>
             <title>Sphaire - 3D Modeling App</title>
@@ -62,7 +61,6 @@ const Home: NextPage = () => {
           </div>
         </div>
       </ModalProvider>
-    </ProtectedRoute>
   );
 };
 

@@ -3,7 +3,6 @@ import '../styles/AIModelingPanel.css';
 import React from 'react';
 import type { AppProps } from 'next/app';
 import { BabylonProvider } from '../contexts/BabylonContext';
-import { AuthProvider } from '../contexts/AuthContext';
 
 class ProductionErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -79,11 +78,9 @@ function MyApp({ Component, pageProps }: AppProps) {
   
   return (
     <ProductionErrorBoundary>
-      <AuthProvider>
-        <BabylonProvider>
-          <Component {...pageProps} />
-        </BabylonProvider>
-      </AuthProvider>
+      <BabylonProvider>
+        <Component {...pageProps} />
+      </BabylonProvider>
     </ProductionErrorBoundary>
   );
 }

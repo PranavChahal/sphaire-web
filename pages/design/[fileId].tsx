@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react'
+import React from 'react'
+import { useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
-import { useAuth } from '../../contexts/AuthContext'
-import { supabase, DesignFile } from '../../lib/supabase'
-import ProtectedRoute from '../../components/ProtectedRoute'
+// Authentication removed - design files no longer require login
 import HeaderPerfect from '../../components/HeaderPerfect'
 import { ViewportProduction } from '../../components/ViewportProduction'
 import Sidebar from '../../components/Sidebar'
@@ -14,11 +13,9 @@ import useStore from '../../store/store'
 import { ModalProvider } from '../../contexts/ModalContext'
 
 const DesignFilePage = () => {
-  const [file, setFile] = useState<DesignFile | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  // State variables removed - authentication disabled
   
-  const { user } = useAuth()
+  // Authentication removed - design files work without login
   const router = useRouter()
   const { fileId } = router.query
   
@@ -32,10 +29,12 @@ const DesignFilePage = () => {
   const { addShape, addModel, clearShapes } = useStore()
 
   useEffect(() => {
-    if (fileId && user) {
-      fetchFile()
+    // File fetching disabled - authentication removed
+    if (fileId) {
+      // Design files now work without authentication
+      console.log('Design file ID:', fileId)
     }
-  }, [fileId, user])
+  }, [fileId])
   
   useEffect(() => {
     if (activeTab === 'code-editor') {
@@ -45,30 +44,7 @@ const DesignFilePage = () => {
     }
   }, [activeTab, showEditor, hideEditor])
 
-  const fetchFile = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('design_files')
-        .select('*')
-        .eq('id', fileId)
-        .single()
-
-      if (error) {
-        console.error('Error fetching file:', error)
-        setError('File not found or you do not have permission to access it')
-      } else {
-        setFile(data)
-        // Load design content into the viewport
-        console.log('Design file loaded:', data)
-        loadDesignContent(data)
-      }
-    } catch (err) {
-      console.error('Unexpected error:', err)
-      setError('An unexpected error occurred')
-    } finally {
-      setLoading(false)
-    }
-  }
+  // File fetching removed - authentication disabled
 
   /**
    * Reconstruct imported model from saved store data
@@ -195,50 +171,16 @@ const DesignFilePage = () => {
     }
   }
 
-  const goBackToDashboard = () => {
-    router.push('/dashboard')
-  }
+  // Navigation function removed
 
-  if (loading) {
-    return (
-      <ProtectedRoute>
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800">
-          <div className="flex flex-col items-center space-y-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-            <p className="text-gray-300">Loading design file...</p>
-          </div>
-        </div>
-      </ProtectedRoute>
-    )
-  }
-
-  if (error) {
-    return (
-      <ProtectedRoute>
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800">
-          <div className="text-center">
-            <div className="bg-red-500 bg-opacity-10 border border-red-500 text-red-400 px-6 py-4 rounded-lg max-w-md">
-              <h2 className="text-lg font-semibold mb-2">Error</h2>
-              <p>{error}</p>
-              <button
-                onClick={goBackToDashboard}
-                className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition-colors"
-              >
-                Back to Dashboard
-              </button>
-            </div>
-          </div>
-        </div>
-      </ProtectedRoute>
-    )
-  }
+  // Loading and error states removed - authentication disabled
 
   return (
-    <ProtectedRoute>
+
       <ModalProvider>
         <div className="h-screen w-screen flex flex-col bg-gray-900 text-white overflow-hidden">
           <Head>
-            <title>{file?.name || 'Design'} - Sphaire 3D</title>
+            <title>Design - Sphaire 3D</title>
             <meta name="description" content="A modern 3D modeling application" />
             <link rel="icon" href="/favicon.ico" />
           </Head>
@@ -269,7 +211,6 @@ const DesignFilePage = () => {
           </div>
         </div>
       </ModalProvider>
-    </ProtectedRoute>
   )
 }
 

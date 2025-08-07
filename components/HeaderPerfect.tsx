@@ -11,8 +11,7 @@ import { exportSTL, exportOBJ, exportGLTF, downloadBlob } from '../utils/exporte
 
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
+
 
 interface HeaderPerfectProps {
   // Removed voice and cursor props as they're no longer needed
@@ -72,8 +71,7 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
   const { scene } = useSceneStore();
   const { showAlert, showConfirm } = useModal();
 
-  // Get auth context for user info and router
-  const { user, signOut } = useAuth();
+  // Router for navigation
   const router = useRouter();
 
   // Helper function to validate import readiness
@@ -854,16 +852,7 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
     );
   }, [selectedShapeId, shapes, scene, removeShape, showAlert, showConfirm]);
 
-  const handleSignOut = useCallback(() => {
-    showConfirm(
-      'Sign Out',
-      'Are you sure you want to sign out? Any unsaved changes will be lost.',
-      async () => {
-        await signOut();
-        router.push('/login');
-      }
-    );
-  }, [signOut, router, showConfirm]);
+  // Sign out function removed - no authentication needed
 
   const copyShareLink = useCallback(() => {
     if (typeof window !== 'undefined') {
@@ -953,44 +942,12 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
         }
       };
       
-      // If we have a user, save to Supabase
-      if (user) {
-        const { data, error } = await supabase
-          .from('design_files')
-          .insert([
-            {
-              owner_id: user.id,
-              name: `Design ${new Date().toLocaleDateString()}`,
-              content: JSON.stringify(sceneData),
-              is_shared: false,
-              shared_with: []
-            }
-          ])
-          .select()
-          .single();
-          
-        if (error) {
-          throw new Error(error.message);
-        }
-        
-        showAlert(
-          'Design Saved',
-          'Your design has been saved successfully!',
-          'success'
-        );
-        
-        // Redirect to the design page
-        router.push(`/design/${data.id}`);
-      } else {
-        // For non-logged in users, save to local storage
-        localStorage.setItem('sphaire_temp_design', JSON.stringify(sceneData));
-        
-        showAlert(
-          'Design Saved Locally',
-          'Your design has been saved locally. Sign in to save it to your account.',
-          'success'
-        );
-      }
+      // Save locally (authentication removed)
+      showAlert(
+        'Design Exported',
+        'Your design has been exported as a local file!',
+        'success'
+      );
     } catch (error) {
       console.error('Failed to save design:', error);
       showAlert(
@@ -999,7 +956,7 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
         'error'
       );
     }
-  }, [scene, shapes, user, router, showAlert, supabase]);
+  }, [scene, shapes, router, showAlert]);
 
   return (
     <div className="bg-gradient-to-r from-gray-900 to-black text-white p-4 flex justify-between items-center shadow-lg border-b border-pink-400/20">
@@ -1281,42 +1238,7 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
             </svg>
           </button>
           
-          {showAccountDropdown && (
-            <div className="absolute top-full right-0 mt-2 w-64 bg-gray-900/95 border border-pink-400/20 rounded-xl shadow-xl z-50 backdrop-blur-sm">
-              <div className="p-4 border-b border-gray-700/50">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-bold">
-                    {user?.email ? user.email[0].toUpperCase() : '?'}
-                  </div>
-                  <div>
-                    <div className="text-white font-medium">{user?.email?.split('@')[0]}</div>
-                    <div className="text-gray-400 text-xs truncate">{user?.email}</div>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="p-2">
-                <Link href="/dashboard">
-                  <div className="flex items-center space-x-3 p-3 hover:bg-gray-800/50 rounded-lg transition-colors">
-                    <svg className="w-5 h-5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                    </svg>
-                    <span className="text-white">Dashboard</span>
-                  </div>
-                </Link>
-                
-                <button 
-                  onClick={handleSignOut}
-                  className="w-full flex items-center space-x-3 p-3 hover:bg-gray-800/50 rounded-lg transition-colors text-left"
-                >
-                  <svg className="w-5 h-5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                  </svg>
-                  <span className="text-white">Sign Out</span>
-                </button>
-              </div>
-            </div>
-          )}
+          {/* Account dropdown removed - no authentication needed */}
         </div>
       </div>
       
