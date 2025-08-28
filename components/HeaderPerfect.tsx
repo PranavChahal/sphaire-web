@@ -422,39 +422,17 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
       setIsImporting(true);
       setImportProgress(`Loading ${model.name}...`);
       
-      // Try different extensions if needed
-      const extensions = model.format ? [`.${model.format}`, ''] : ['', '.stl', '.obj'];
-      
-      let arrayBuffer: ArrayBuffer | null = null;
-      let fileExt = '';
-      
-      // Try each extension until we find a valid file
-      for (const ext of extensions) {
-        const filePath = ext ? `${model.path}${ext}` : model.path;
-        const publicUrl = `https://mvqfkhyxrcymuvorjeru.supabase.co/storage/v1/object/public/thingi10k/${filePath}`;
-        
-        console.log(`🔄 Attempting to load: ${publicUrl}`);
-        try {
-          const response = await fetch(publicUrl);
-          if (response.ok) {
-            arrayBuffer = await response.arrayBuffer();
-            fileExt = ext;
-            console.log(`✅ Successfully loaded model file: ${filePath}`);
-            break;
-          }
-          console.log(`❌ Failed to load ${filePath}: ${response.status} ${response.statusText}`);
-        } catch (err) {
-          console.error(`Error loading ${filePath}:`, err);
-        }
+      // Read the STL/OBJ file from the dataset via API endpoint
+      const apiPath = model.path.replace('/Volumes/Untitled/Thingi10K/', '');
+      const response = await fetch(`/api/thingi10k/${apiPath}`);
+      if (!response.ok) {
+        throw new Error(`Failed to load model file: ${response.status} ${response.statusText}`);
       }
       
-      if (!arrayBuffer) {
-        throw new Error(`Failed to load model file. Tried paths: ${extensions.map(ext => model.path + ext).join(', ')}`);
-      }
-      
+      const arrayBuffer = await response.arrayBuffer();
       const blob = new Blob([arrayBuffer]);
-      const file = new File([blob], model.filename || `${model.path.split('/').pop()}${fileExt}`, { 
-        type: fileExt.endsWith('stl') ? 'application/sla' : 'text/plain' 
+      const file = new File([blob], model.filename, { 
+        type: model.format === 'stl' ? 'application/sla' : 'text/plain' 
       });
       
       // Use existing import functionality
@@ -462,15 +440,9 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
       
     } catch (error) {
       console.error('❌ Failed to load Thingi10K model:', error);
-      const filePath = model.path || 'unknown';
-      const fullUrl = `https://mvqfkhyxrcymuvorjeru.supabase.co/storage/v1/object/public/thingi10k/${filePath}`;
       showAlert(
         'Model Load Failed',
-        `Failed to load model: ${model.name}\n\n` +
-        `Error: ${error instanceof Error ? error.message : String(error)}\n\n` +
-        `Model path: ${filePath}\n` +
-        `Full URL: ${fullUrl}\n` +
-        'Please try a different model or check your internet connection.',
+        `Failed to load model: ${model.name}\n\nError: ${error}\n\nPlease try a different model or check your internet connection.`,
         'error'
       );
     } finally {
