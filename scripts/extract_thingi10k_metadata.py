@@ -106,13 +106,15 @@ def extract_metadata(dataset_path):
         else:
             continue
             
+        # Store direct path in the bucket (no subfolder)
+        relative_path = actual_filename
         metadata_entry = {
             "name": name,
             "tags": tags if isinstance(tags, list) else [],
             "file_id": file_id,
             "filename": actual_filename,
             "format": file_format,
-            "path": str(raw_meshes_path / actual_filename)
+            "path": relative_path  # Relative path for Supabase
         }
         
         metadata_mapping[actual_filename] = metadata_entry
@@ -126,7 +128,7 @@ def extract_metadata(dataset_path):
             "filename": actual_filename,
             "format": file_format,
             "searchText": search_text,
-            "path": str(raw_meshes_path / actual_filename)
+            "path": actual_filename
         })
         
         processed_count += 1
@@ -156,7 +158,8 @@ def extract_metadata(dataset_path):
 
 def main():
     """Main execution function."""
-    dataset_path = "/Volumes/Untitled/Thingi10K"
+    # Update this to point to your local Thingi10K dataset directory
+    dataset_path = "path/to/your/Thingi10K"
     
     print("🚀 Thingi10K Metadata Extraction Script")
     print("=" * 50)
