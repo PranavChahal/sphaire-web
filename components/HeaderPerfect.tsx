@@ -11,14 +11,15 @@ import { exportSTL, exportOBJ, exportGLTF, downloadBlob } from '../utils/exporte
 
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import { useThingiSearch } from '../hooks/useThingiSearch';
 
 
 interface HeaderPerfectProps {
   // Removed voice and cursor props as they're no longer needed
 }
 
-const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
-  console.log('🎬 PERFECT HEADER: Component initialized');
+const HeaderPerfect: React.FC<HeaderPerfectProps> = React.memo(() => {
+  // Removed excessive console logging for performance
   
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState<string>('');
@@ -33,13 +34,13 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
   const [isExporting, setIsExporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const { searchState, search: performSearch } = useThingiSearch({ limit: 10 });
   const [showSearchResults, setShowSearchResults] = useState(false);
-  const [isSearchLoading, setIsSearchLoading] = useState(false);
-  const [searchIndex, setSearchIndex] = useState<any[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const timeoutRefs = useRef<Set<NodeJS.Timeout>>(new Set());
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timeoutRefs = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
   
   useEffect(() => {
     return () => {
@@ -67,7 +68,7 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const { addModel, selectShape, removeShape, selectedShapeId, shapes } = useStore();
+  const { addModel, selectShape, removeShape, selectedShapeId, shapes, _undoRedoSystem } = useStore();
   const { scene } = useSceneStore();
   const { showAlert, showConfirm } = useModal();
 
@@ -93,69 +94,69 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
     return true;
   }, [showAlert]);
 
-  const loadSearchIndex = useCallback(async () => {
-    try {
-      const response = await fetch('/search_index.json');
-      if (response.ok) {
-        const index = await response.json();
-        setSearchIndex(index);
-        console.log('✅ Thingi10K search index loaded:', index.length, 'models');
-      } else {
-        console.warn('⚠️ Search index not found. Run metadata extraction first.');
-      }
-    } catch (error) {
-      console.error('❌ Failed to load search index:', error);
-    }
-  }, []);
-
-  React.useEffect(() => {
-    loadSearchIndex();
-  }, [loadSearchIndex]);
-
-  const performSearch = useCallback((query: string) => {
-    if (!query.trim() || searchIndex.length === 0) {
-      setSearchResults([]);
-      setShowSearchResults(false);
-      return;
-    }
-    
-    setIsSearchLoading(true);
-    const normalizedQuery = query.toLowerCase().trim();
-    
-    const results = searchIndex.filter(item => {
-      const nameMatch = item.name.toLowerCase().includes(normalizedQuery);
-      const tagMatch = item.tags.some((tag: string) => 
-        tag.toLowerCase().includes(normalizedQuery)
-      );
-      const searchTextMatch = item.searchText.includes(normalizedQuery);
-      
-      return nameMatch || tagMatch || searchTextMatch;
-    });
-    
-    // Limit results for performance
-    const limitedResults = results.slice(0, 10);
-    
-    setSearchResults(limitedResults);
-    setShowSearchResults(limitedResults.length > 0);
-    setIsSearchLoading(false);
-    
-    console.log(`🔍 Search for "${query}" found ${limitedResults.length} results`);
-  }, [searchIndex]);
-
-  /**
-   * Handle search input change
-   */
+  // Debounced search handler
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setSearchQuery(value);
+    const query = e.target.value;
     
-    // Debounce search
-    const timeoutId = setTimeout(() => {
-      performSearch(value);
+    // Clear existing timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    // Debounce search calls
+    searchTimeoutRef.current = setTimeout(() => {
+      performSearch(query);
     }, 300);
     
-    return () => clearTimeout(timeoutId);
+    // Show/hide search results based on query
+    setShowSearchResults(query.length > 0);
   }, [performSearch]);
+
+  // Show/hide search results based on search state
+  React.useEffect(() => {
+    if (searchState && searchState.results.length > 0) {
+      if (searchState.isLoading) {
+        // Show loading state
+      } else if (searchState.results && searchState.results.length > 0) {
+        setShowSearchResults(true);
+      }
+    }
+  }, [searchState, searchState.results.length]);
+
+
+  // Undo/Redo button handlers
+  const handleUndo = useCallback(async () => {
+    if (_undoRedoSystem && (_undoRedoSystem.canUndo || _undoRedoSystem.currentIndex >= 0)) {
+      await _undoRedoSystem.undo();
+    }
+  }, [_undoRedoSystem]);
+
+  const handleRedo = useCallback(async () => {
+    if (_undoRedoSystem && (_undoRedoSystem.canRedo || _undoRedoSystem.currentIndex < _undoRedoSystem.history.length - 1)) {
+      await _undoRedoSystem.redo();
+    }
+  }, [_undoRedoSystem]);
+
+  // Keep local canUndo/canRedo in sync with global system
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout | null = null;
+    const tick = () => {
+      if (_undoRedoSystem) {
+        const nextCanUndo = _undoRedoSystem.canUndo || _undoRedoSystem.currentIndex >= 0;
+        const nextCanRedo = _undoRedoSystem.canRedo || _undoRedoSystem.currentIndex < _undoRedoSystem.history.length - 1;
+        setCanUndo((prev) => (prev !== nextCanUndo ? nextCanUndo : prev));
+        setCanRedo((prev) => (prev !== nextCanRedo ? nextCanRedo : prev));
+      } else {
+        setCanUndo(false);
+        setCanRedo(false);
+      }
+    };
+    tick();
+    intervalId = setInterval(tick, 250);
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [_undoRedoSystem]);
 
 
 
@@ -165,17 +166,18 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
   const calculateImportScale = useCallback((meshes: BABYLON.AbstractMesh[]): number => {
     if (!meshes || meshes.length === 0) return 1;
     
-    // Calculate bounding box of all meshes
+    // Ensure world matrices are up-to-date
+    meshes.forEach(m => m.computeWorldMatrix(true));
+    
+    // Calculate WORLD-SPACE bounding box of all meshes
     let minX = Infinity, maxX = -Infinity;
     let minY = Infinity, maxY = -Infinity;
     let minZ = Infinity, maxZ = -Infinity;
     
     meshes.forEach(mesh => {
-      if (mesh.name === '__root__') return;
-      
-      const boundingInfo = mesh.getBoundingInfo();
-      const min = boundingInfo.minimum;
-      const max = boundingInfo.maximum;
+      const bb = mesh.getBoundingInfo().boundingBox;
+      const min = bb.minimumWorld;
+      const max = bb.maximumWorld;
       
       minX = Math.min(minX, min.x);
       maxX = Math.max(maxX, max.x);
@@ -195,7 +197,7 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
     const targetSize = 5;
     const scaleFactor = maxDimension > targetSize ? targetSize / maxDimension : 1;
     
-    console.log(`🔧 PERFECT HEADER: Calculated scale factor ${scaleFactor} (max dimension: ${maxDimension})`);
+    console.log(`PERFECT HEADER: Calculated scale factor ${scaleFactor} (max dimension: ${maxDimension})`);
     return scaleFactor;
   }, []);
 
@@ -203,7 +205,7 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
    * PERFECT FILE IMPORT HANDLER
    */
   const handleFileImport = useCallback(async (file: File): Promise<void> => {
-    console.log('🚀 PERFECT HEADER: Starting perfect file import for:', file.name);
+    console.log('PERFECT HEADER: Starting perfect file import for:', file.name);
     setImportProgress(`Reading file: ${file.name}...`);
     
     const fileName = file.name.toLowerCase();
@@ -220,17 +222,17 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
       
       // 3. Import SceneLoader
       const { SceneLoader } = await import('@babylonjs/core/Loading/sceneLoader');
-      console.log('✅ PERFECT HEADER: SceneLoader imported');
+      console.log('PERFECT HEADER: SceneLoader imported');
       
       // 4. Convert file to ArrayBuffer (most reliable approach)
       setImportProgress('Converting file...');
       const arrayBuffer = await file.arrayBuffer();
-      console.log('✅ PERFECT HEADER: File converted to ArrayBuffer:', arrayBuffer.byteLength, 'bytes');
+      console.log('PERFECT HEADER: File converted to ArrayBuffer:', arrayBuffer.byteLength, 'bytes');
       
       // 5. Create blob URL for SceneLoader (Babylon.js 5.50.0 compatible)
       const blob = new Blob([arrayBuffer], { type: file.type });
       const blobUrl = URL.createObjectURL(blob);
-      console.log('✅ PERFECT HEADER: Blob URL created:', blobUrl);
+      console.log('PERFECT HEADER: Blob URL created:', blobUrl);
       
       setImportProgress('Importing 3D model...');
       
@@ -244,42 +246,92 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
         fileExtension // File extension for plugin selection
       );
       
-      console.log('✅ PERFECT HEADER: Import successful!');
-      console.log('📊 PERFECT HEADER: Import result:', importResult);
-      console.log('📊 PERFECT HEADER: Imported meshes:', importResult.meshes.length);
+      console.log('PERFECT HEADER: Import successful!');
+      console.log('PERFECT HEADER: Import result:', importResult);
+      console.log('PERFECT HEADER: Imported meshes:', importResult.meshes.length);
       
       // 7. Process imported meshes and create container
       if (importResult.meshes && importResult.meshes.length > 0) {
         setImportProgress('Processing imported meshes...');
         
-        // Create a container node for all imported meshes
-        const modelContainer = new BABYLON.TransformNode(`imported-model-${Date.now()}`, scene!);
+        // Create a container mesh for all imported meshes (attachable by gizmos)
+        const modelContainer = new BABYLON.Mesh(`imported-model-${Date.now()}`, scene!);
+        modelContainer.isPickable = false; // ensure parts are selectable individually
         modelContainer.position = new BABYLON.Vector3(0, 0, 0);
         modelContainer.rotation = new BABYLON.Vector3(0, 0, 0);
         modelContainer.scaling = new BABYLON.Vector3(1, 1, 1);
         
-        console.log('🔧 PERFECT HEADER: Created model container for imported meshes');
+        console.log('PERFECT HEADER: Created model container for imported meshes');
         
-        // Parent all imported meshes to the container
+        // Parent GLTF ROOT to the container to preserve loader transforms (axis/unit fixes)
         let processedCount = 0;
-        importResult.meshes.forEach((mesh: BABYLON.AbstractMesh, index: number) => {
-          if (mesh && mesh.name && mesh.name !== '__root__') {
-            console.log(`✅ PERFECT HEADER: Processing mesh ${index + 1}:`, mesh.name);
-            mesh.parent = modelContainer;
-            processedCount++;
+        const root = importResult.meshes.find(m => m && m.name === '__root__') as BABYLON.AbstractMesh | undefined;
+        if (root) {
+          console.log('PERFECT HEADER: Found __root__ mesh, preserving loader transforms');
+          root.parent = modelContainer;
+          processedCount = importResult.meshes.length - 1; // Approximate child count (excluding root)
+        } else {
+          // Fallback: reparent non-root meshes
+          importResult.meshes.forEach((mesh: BABYLON.AbstractMesh, index: number) => {
+            if (mesh && mesh.name && mesh.name !== '__root__') {
+              console.log(`PERFECT HEADER: Processing mesh ${index + 1}:`, mesh.name);
+              mesh.parent = modelContainer;
+              processedCount++;
+            }
+          });
+        }
+        
+        // Apply metadata to root and children for reliable selection redirection
+        importResult.meshes.forEach((m: any) => {
+          if (m && m !== modelContainer) {
+            m.metadata = { ...(m.metadata || {}), isModelChild: true };
           }
         });
+        
         
         // Calculate and apply appropriate scaling
         const scaleFactor = calculateImportScale(importResult.meshes);
         if (scaleFactor !== 1) {
           modelContainer.scaling = new BABYLON.Vector3(scaleFactor, scaleFactor, scaleFactor);
-          console.log(`🔧 PERFECT HEADER: Applied scale factor ${scaleFactor} to model container`);
+          console.log(`PERFECT HEADER: Applied scale factor ${scaleFactor} to model container`);
         }
         
-        // 8. Read file content and create store entry
+        // Lift model so its base sits on the grid (y = 0)
+        try {
+          modelContainer.computeWorldMatrix(true);
+          const bounds = modelContainer.getHierarchyBoundingVectors(true);
+          const minY = bounds.min.y;
+          if (isFinite(minY) && !isNaN(minY)) {
+            modelContainer.position.y += -minY;
+            console.log(`PERFECT HEADER: Lifted model by ${-minY} to sit on grid`);
+          }
+        } catch (e) {
+          console.warn('PERFECT HEADER: Failed to compute hierarchy bounds for lift:', e);
+        }
+        
+        // 8. Frame camera on the imported model for immediate visibility
+        try {
+          const cam = scene!.activeCamera as BABYLON.ArcRotateCamera | null;
+          if (cam && cam instanceof BABYLON.ArcRotateCamera) {
+            const bv = modelContainer.getHierarchyBoundingVectors(true);
+            const min = bv.min;
+            const max = bv.max;
+            const center = min.add(max).scale(0.5);
+            const size = max.subtract(min);
+            const radius = Math.max(size.x, size.y, size.z) * 1.5 + 2;
+            cam.target = center;
+            cam.radius = Math.max(2, Math.min(100, radius));
+            console.log('PERFECT HEADER: Framed camera to imported model');
+          }
+        } catch (e) {
+          console.warn('PERFECT HEADER: Failed to frame camera:', e);
+        }
+
+        // 9. Read file content and create store entry
         console.log('📁 PERFECT HEADER: Reading file content for store...');
         const fileReader = new FileReader();
+        // Hoist modelId so we can reference it after the FileReader promise resolves
+        let modelId: string = '';
         
         await new Promise<void>((resolve, reject) => {
           fileReader.onload = () => {
@@ -295,9 +347,9 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
                 base64String += btoa(String.fromCharCode.apply(null, Array.from(slice)));
               }
               
-              console.log(`💾 PERFECT HEADER: File encoded to Base64 (${base64String.length} chars)`);
+              console.log(`PERFECT HEADER: File encoded to Base64 (${base64String.length} chars)`);
               
-              // 9. Create unified store entry for the imported model
+              // 10. Create unified store entry for the imported model
               const modelEntry = {
                 type: 'model' as const,
                 position: {
@@ -306,9 +358,9 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
                   z: modelContainer.position.z
                 },
                 rotation: {
-                  x: modelContainer.rotation.x,
-                  y: modelContainer.rotation.y,
-                  z: modelContainer.rotation.z
+                  x: (modelContainer.rotation.x || 0) * 180 / Math.PI,
+                  y: (modelContainer.rotation.y || 0) * 180 / Math.PI,
+                  z: (modelContainer.rotation.z || 0) * 180 / Math.PI
                 },
                 scaling: {
                   x: modelContainer.scaling.x,
@@ -321,44 +373,57 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
                 originalSize: file.size,
                 name: file.name.replace(/\.[^/.]+$/, '') // Remove extension for display
               };
-              
-              // 10. Add to store using the new addModel function
-              addModel(modelEntry);
-              
-              // 11. Link container to store entry for selection/manipulation
-              const modelId = modelContainer.name;
+               
+              // 10. Add to store and capture the generated id
+               modelId = addModel(modelEntry);
+               
+              // 12. Link container to store entry for selection/manipulation
+              modelContainer.name = modelId;
               modelContainer.metadata = { shapeId: modelId, isModelContainer: true };
+              // Tag root and child meshes with the same shapeId for reliable selection
+              importResult.meshes.forEach((m: any) => {
+                if (!m) return;
+                m.metadata = { ...(m.metadata || {}), shapeId: modelId, isModelChild: true };
+                if (m.material) {
+                  try {
+                    m.material.backFaceCulling = false;
+                    if ((m.material as any).twoSidedLighting !== undefined) {
+                      (m.material as any).twoSidedLighting = true;
+                    }
+                  } catch {}
+                }
+              });
               
-              console.log(`✅ PERFECT HEADER: Created unified store entry for imported model:`, modelEntry.fileName);
-              console.log(`🔗 PERFECT HEADER: Linked container ${modelId} to store entry`);
+              console.log(`PERFECT HEADER: Created unified store entry for imported model:`, modelEntry.fileName);
+               console.log(`PERFECT HEADER: Linked container ${modelId} to store entry`);
               
               resolve();
             } catch (error) {
-              console.error('❌ PERFECT HEADER: Failed to process file content:', error);
+              console.error('PERFECT HEADER: Failed to process file content:', error);
               reject(error);
             }
           };
           
           fileReader.onerror = () => {
-            console.error('❌ PERFECT HEADER: Failed to read file');
+            console.error('PERFECT HEADER: Failed to read file');
             reject(new Error('Failed to read file'));
           };
           
           fileReader.readAsArrayBuffer(file);
         });
         
-        console.log(`✅ PERFECT HEADER: Successfully processed imported model with ${processedCount} meshes`);
+        console.log(`PERFECT HEADER: Successfully processed imported model with ${processedCount} meshes`);
         
-        // 🚨 ELIMINATED: No longer using scene.metadata.importedMeshes
+        // ELIMINATED: No longer using scene.metadata.importedMeshes
         // All model data is now in the store for unified save/load
         
         // 12. Select the imported model (container)
         if (processedCount > 0 && modelContainer) {
-          selectShape(modelContainer.name);
-          console.log('✅ PERFECT HEADER: Selected imported model container:', modelContainer.name);
+          selectShape(modelId);
+          console.log('PERFECT HEADER: Selected imported model container:', modelId);
         }
         
-        setImportProgress(`✅ Successfully imported ${processedCount} object(s)!`);
+        setImportProgress(`Successfully imported ${processedCount} object(s)!`);
         
         // Success notification with cleanup tracking
         const successTimeout = setTimeout(() => {
@@ -375,7 +440,7 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
         timeoutRefs.current.add(successTimeout);
         
       } else {
-        console.warn('⚠️ PERFECT HEADER: No meshes found in imported file');
+        console.warn('PERFECT HEADER: No meshes found in imported file');
         showAlert(
           'No Objects Found',
           'No 3D objects were found in the imported file.\n\nPlease check that the file contains valid 3D geometry and is not corrupted.',
@@ -385,10 +450,10 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
       
       // 10. Clean up blob URL
       URL.revokeObjectURL(blobUrl);
-      console.log('🧹 PERFECT HEADER: Blob URL cleaned up');
+      console.log('PERFECT HEADER: Blob URL cleaned up');
       
     } catch (error) {
-      console.error('❌ PERFECT HEADER: Import failed:', error);
+      console.error('PERFECT HEADER: Import failed:', error);
       
       // Detailed error message
       let errorMessage = 'Unknown error occurred';
@@ -411,7 +476,7 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
    * Handle model selection from search results
    */
   const handleModelSelect = useCallback(async (model: any) => {
-    console.log('🎯 Loading Thingi10K model:', model.name);
+    console.log('Loading Thingi10K model:', model.name);
     setShowSearchResults(false);
     
     try {
@@ -437,7 +502,7 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
       await handleFileImport(file);
       
     } catch (error) {
-      console.error('❌ Failed to load Thingi10K model:', error);
+      console.error('Failed to load Thingi10K model:', error);
       showAlert(
         'Model Load Failed',
         `Failed to load model: ${model.name}\n\nError: ${error}\n\nPlease try a different model or check your internet connection.`,
@@ -455,7 +520,7 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
   const handleImportClick = useCallback(() => {
     if (isImporting) return;
     
-    console.log('🎯 PERFECT HEADER: Import button clicked');
+    console.log('PERFECT HEADER: Import button clicked');
     
     if (!validateImportReady()) return;
     
@@ -554,7 +619,7 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
             return !isHelperObject && !isLineSystem;
           });
           
-          console.log('🔍 STL Export - Found meshes:', exportableMeshes.map(m => `${m.name} (${m.getClassName()})`));
+          console.log('STL Export - Found meshes:', exportableMeshes.map(m => `${m.name} (${m.getClassName()})`));
           
           if (exportableMeshes.length === 0) {
             showAlert(
@@ -575,7 +640,7 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
             blob = exportSTL(exportableMeshes[0] as any);
           } else {
             // Multiple objects - merge them into one mesh for export
-            console.log('🔄 Merging multiple objects into single STL...');
+            console.log('Merging multiple objects into single STL...');
             
             // Create a temporary merged mesh
             const mergedMesh = BABYLON.Mesh.MergeMeshes(exportableMeshes as any[], true, true, undefined, false, true);
@@ -619,7 +684,7 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
             return !isHelperObject && !isLineSystem;
           });
           
-          console.log('🔍 OBJ Export - Found meshes:', exportableMeshes.map(m => `${m.name} (${m.getClassName()})`));
+          console.log('OBJ Export - Found meshes:', exportableMeshes.map(m => `${m.name} (${m.getClassName()})`));
           
           if (exportableMeshes.length === 0) {
             showAlert(
@@ -640,7 +705,7 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
             blob = exportOBJ(exportableMeshes[0] as any);
           } else {
             // Multiple objects - OBJ format can handle multiple meshes
-            console.log('📦 Exporting multiple objects as OBJ...');
+            console.log('Exporting multiple objects as OBJ...');
             blob = exportOBJ(exportableMeshes as any);
           }
           
@@ -650,7 +715,7 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
         
         case 'GLTF': {
           // EXPERT GLTF: Create a clean scene copy without grid/helpers
-          console.log('🔍 GLTF Export - Creating clean scene copy...');
+          console.log('GLTF Export - Creating clean scene copy...');
           
           // Create temporary scene for clean export
           const cleanScene = new BABYLON.Scene(scene.getEngine());
@@ -694,7 +759,7 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
             
             // Cleanup temporary scene
             cleanScene.dispose();
-            console.log('✅ Clean GLTF export completed');
+            console.log('Clean GLTF export completed');
           } catch (error) {
             cleanScene.dispose();
             throw error;
@@ -704,7 +769,7 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
         
         case 'STEP': {
           // EXPERT STEP EXPORT: Check for available CAD shapes
-          console.log('🔍 STEP Export - Checking for available shapes...');
+          console.log('STEP Export - Checking for available shapes...');
           
           // Check if we have any CAD shapes from the store
           const availableShapes = shapes ? Object.keys(shapes) : [];
@@ -745,7 +810,7 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
       );
       
     } catch (error) {
-      console.error('❌ Export failed:', error);
+      console.error('Export failed:', error);
       showAlert(
         'Export Failed',
         `Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -757,10 +822,10 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
   }, [scene, showAlert]);
 
   const exportFormats = [
-    { name: 'STL', description: 'For 3D printing', icon: '🖨️' },
-    { name: 'OBJ', description: 'Universal 3D format', icon: '📦' },
+    { name: 'STL', description: 'For 3D printing', icon: '' },
+    { name: 'OBJ', description: 'Universal 3D format', icon: '' },
     { name: 'GLTF', description: 'Web-optimized scene', icon: '🌐' },
-    { name: 'STEP', description: 'CAD format (beta)', icon: '⚙️' }
+    { name: 'STEP', description: 'CAD format (beta)', icon: '' }
   ];
 
   /**
@@ -816,10 +881,10 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
           
           if (meshToDelete) {
             meshToDelete.dispose();
-            console.log('🗑️ Deleted imported mesh:', objectName);
+            console.log('Deleted imported mesh:', objectName);
           }
           
-          // 🚨 UNIFIED STORE ARCHITECTURE: No longer using scene.metadata.importedMeshes
+          // UNIFIED STORE ARCHITECTURE: No longer using scene.metadata.importedMeshes
           // All model deletion is now handled by the store-based system
           // Legacy metadata filtering logic removed (previously filtered by uniqueId and id)
         } else if (objectType === 'ai-generated') {
@@ -829,7 +894,7 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
           
           if (meshToDelete) {
             meshToDelete.dispose();
-            console.log('🗑️ Deleted AI-generated mesh:', objectName);
+            console.log('Deleted AI-generated mesh:', objectName);
           }
           
           // Remove from AI-generated meshes metadata
@@ -932,7 +997,7 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
           // Explicitly exclude babylonMesh and other non-serializable properties
           return safeShape;
         }),
-        // 🚨 UNIFIED STORE ARCHITECTURE: No longer using scene.metadata
+        // UNIFIED STORE ARCHITECTURE: No longer using scene.metadata
         // All data is now stored in the unified store for perfect serialization
         metadata: {
           version: '2.0',
@@ -943,6 +1008,11 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
       };
       
       // Save locally (authentication removed)
+      // Convert to JSON and download
+      const json = JSON.stringify(sceneData, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const filename = `sphaire-design-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+      downloadBlob(blob, filename);
       showAlert(
         'Design Exported',
         'Your design has been exported as a local file!',
@@ -985,23 +1055,23 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
         </Link>
         <div className="text-xs text-gray-400 ml-2 self-end mb-1">
           <span className="bg-gray-800/50 px-2 py-1 rounded border border-gray-600/30">
-            web v1 <span className="text-yellow-400">(beta)</span>
+            web <span className="text-yellow-400">(beta)</span>
           </span>
         </div>
       </div>
       
       {/* Thingi10K Search Bar */}
-      <div className="flex-1 max-w-md mx-8 relative">
+      <div className="flex-1 max-w-lg mx-8 relative">
         <div className="relative">
           <input
             ref={searchInputRef}
             type="text"
             placeholder="Search models (e.g., 'screw', 'bracket', 'gear')..."
-            value={searchQuery}
+            value={searchState.query}
             onChange={handleSearchChange}
             className="w-full pl-10 pr-10 py-3 bg-gray-800/90 border border-gray-600/50 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-pink-400/80 focus:ring-2 focus:ring-pink-400/20 focus:bg-gray-800 transition-all duration-300 text-sm backdrop-blur-sm"
           />
-          {isSearchLoading && (
+          {searchState.isLoading && (
             <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
               <div className="w-4 h-4 border-2 border-pink-400 border-t-transparent rounded-full animate-spin"></div>
             </div>
@@ -1015,9 +1085,9 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
         </div>
         
         {/* Search Results Dropdown */}
-        {showSearchResults && searchResults.length > 0 && (
+        {showSearchResults && searchState.results.length > 0 && (
           <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-xl z-50 max-h-80 overflow-y-auto">
-            {searchResults.map((model) => (
+            {searchState.results.map((model: any) => (
               <div
                 key={model.id}
                 onClick={() => handleModelSelect(model)}
@@ -1055,19 +1125,19 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
         )}
         
         {/* No Results Message */}
-        {showSearchResults && searchResults.length === 0 && searchQuery.trim() && (
+        {showSearchResults && searchState.results.length === 0 && searchState.query.trim() && (
           <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-xl z-50">
             <div className="px-4 py-3 text-gray-400 text-sm text-center">
-              No models found for "{searchQuery}"
+              No models found for "{searchState.query}"
             </div>
           </div>
         )}
         
-        {/* Search Index Status */}
-        {searchIndex.length === 0 && (
+        {/* Loading Message */}
+        {searchState.isLoading && (
           <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-xl z-50">
-            <div className="px-4 py-3 text-yellow-400 text-sm text-center">
-              ⚠️ Search index not loaded. Run metadata extraction first.
+            <div className="px-4 py-3 text-blue-400 text-sm text-center">
+              Searching...
             </div>
           </div>
         )}
@@ -1075,6 +1145,37 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
       
       {/* Action Buttons */}
       <div className="flex items-center space-x-4">
+        {/* Undo / Redo */}
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={handleUndo}
+            disabled={!canUndo}
+            className={`p-2 rounded-lg transition-all duration-300 shadow-lg border ${
+              canUndo
+                ? 'bg-black text-pink-400 hover:text-pink-300 border-pink-400/20 hover:border-pink-400/40 hover:shadow-lg hover:shadow-pink-400/20'
+                : 'bg-gray-800 text-gray-400 cursor-not-allowed opacity-50 border-gray-600'
+            }`}
+            title="Undo"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7l-4 4m0 0l4 4m-4-4h11a4 4 0 014 4v1" />
+            </svg>
+          </button>
+          <button
+            onClick={handleRedo}
+            disabled={!canRedo}
+            className={`p-2 rounded-lg transition-all duration-300 shadow-lg border ${
+              canRedo
+                ? 'bg-black text-pink-400 hover:text-pink-300 border-pink-400/20 hover:border-pink-400/40 hover:shadow-lg hover:shadow-pink-400/20'
+                : 'bg-gray-800 text-gray-400 cursor-not-allowed opacity-50 border-gray-600'
+            }`}
+            title="Redo"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 7l4 4m0 0l-4 4m4-4H10a4 4 0 00-4 4v1" />
+            </svg>
+          </button>
+        </div>
         {/* Share Button */}
         <button
           data-share-button
@@ -1200,19 +1301,16 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
         <button
           onClick={handleDeleteSelected}
           disabled={!selectedShapeId}
-          className={`px-5 py-2.5 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg border group ${
+          className={`p-2 rounded-lg transition-all duration-300 shadow-lg border ${
             selectedShapeId
               ? 'bg-red-900/30 text-red-400 hover:text-red-300 border-red-400/30 hover:border-red-400/50 hover:shadow-lg hover:shadow-red-400/20 hover:bg-red-900/50'
               : 'bg-gray-800 text-gray-500 cursor-not-allowed opacity-50 border-gray-600'
           }`}
           title={selectedShapeId ? 'Delete selected object' : 'No object selected'}
         >
-          <div className="flex items-center space-x-2">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-            <span>Delete</span>
-          </div>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
         </button>
         
         {/* Account Button with Dropdown */}
@@ -1344,6 +1442,6 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = () => {
       )}
     </div>
   );
-};
+});
 
 export default HeaderPerfect;

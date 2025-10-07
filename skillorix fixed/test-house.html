@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>OpenCascade House Test - Direct API</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+      #renderCanvas {
+        width: 100%;
+        height: 100vh;
+        display: block;
+      }
+      #status {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 10px;
+        border-radius: 5px;
+        max-width: 400px;
+      }
+      .error { color: #ff6b6b; }
+      .success { color: #51cf66; }
+      .info { color: #339af0; }
+      button {
+        margin: 5px;
+        padding: 8px 16px;
+        background: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #45a049;
+      }
+    </style>
+    <!-- Load Babylon.js -->
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+    <!-- Load OpenCascade.js module loader -->
+    <script type="module" src="js/opencascade-module-loader.js"></script>
+  </head>
+  <body>
+    <canvas id="renderCanvas"></canvas>
+    <div id="status">
+      <h3>OpenCascade.js House Builder Test</h3>
+      <p class="info">Initializing...</p>
+      <button id="createHouse">Create House</button>
+      <button id="createSimpleBox">Create Simple Box</button>
+      <button id="clearScene">Clear Scene</button>
+      <div id="log"></div>
+    </div>
+    
+    <script>
+      let scene, engine, camera;
+      let ocInstance = null;
+      let currentMeshes = [];
+      
+      // Initialize Babylon.js
+      window.addEventListener('DOMContentLoaded', function() {
+        const canvas = document.getElementById('renderCanvas');
+        engine = new BABYLON.Engine(canvas, true);
+        
+        scene = new BABYLON.Scene(engine);
+        scene.clearColor = new BABYLON.Color3(0.2, 0.2, 0.3);
+        
+        // Camera
+        camera = new BABYLON.ArcRotateCamera("camera", 
+          Math.PI / 4, Math.PI / 3, 30, 
+          new BABYLON.Vector3(0, 0, 0), scene);
+        camera.attachControl(canvas, true);
+        
+        // Light
+        const light = new BABYLON.HemisphericLight("light", 
+          new BABYLON.Vector3(0, 1, 0), scene);
+        light.intensity = 0.7;
+        
+        const light2 = new BABYLON.DirectionalLight("dirLight",
+          new BABYLON.Vector3(-1, -2, -1), scene);
+        light2.intensity = 0.3;
+        
+        // Ground
+        const ground = BABYLON.MeshBuilder.CreateGround("ground", 
+          {width: 50, height: 50}, scene);
+        const groundMat = new BABYLON.StandardMaterial("groundMat", scene);
+        groundMat.diffuseColor = new BABYLON.Color3(0.3, 0.3, 0.3);
+        ground.material = groundMat;
+        
+        engine.runRenderLoop(function() {
+          scene.render();
+        });
+        
+        window.addEventListener('resize', function() {
+          engine.resize();
+        });
+        
+        // Initialize OpenCascade
+        initializeOpenCascade();
+      });
+      
+      function log(message, type = 'info') {
+        const logDiv = document.getElementById('log');
+        const entry = document.createElement('p');
+        entry.className = type;
+        entry.textContent = message;
+        logDiv.appendChild(entry);
+        console.log(`[${type}] ${message}`);
+      }
+      
+      async function initializeOpenCascade() {
+        try {
+          log('Initializing OpenCascade.js...', 'info');
+          
+          if (typeof window.initOpenCascade === 'function') {
+            ocInstance = await window.initOpenCascade({
+              wasmPath: '/lib/opencascade.wasm'
+            });
+            log('OpenCascade.js initialized successfully!', 'success');
+            
+            // Test basic API availability
+            if (ocInstance.gp_Pnt_3 && ocInstance.BRepPrimAPI_MakeBox_3) {
+              log('Core APIs verified', 'success');
+            } else {
+              log('Some APIs may be missing', 'error');
+            }
+          } else {
+            throw new Error('OpenCascade.js loader not found');
+          }
+        } catch (error) {
+          log('Failed to initialize OpenCascade.js: ' + error.message, 'error');
+          console.error(error);
+        }
+      }
+      
+      function convertOCShapeToBabylonMesh(shape, name = "OCShape") {
+        if (!ocInstance || !shape) {
+          log('Invalid shape or OpenCascade instance', 'error');
+          return null;
+        }
+        
+        try {
+          log(`Converting ${name} to mesh...`, 'info');
+          
+          // Mesh the shape
+          const mesh = new ocInstance.BRepMesh_IncrementalMesh_2(
+            shape, 0.1, false, 0.5, false
+          );
+          mesh.Perform(new ocInstance.Message_ProgressRange_1());
+          
+          if (!mesh.IsDone()) {
+            throw new Error('Meshing failed');
+          }
+          
+          // Extract triangulation
+          const vertices = [];
+          const indices = [];
+          const normals = [];
+          
+          const faceExplorer = new ocInstance.TopExp_Explorer_2(
+            shape,
+            ocInstance.TopAbs_ShapeEnum.TopAbs_FACE,
+            ocInstance.TopAbs_ShapeEnum.TopAbs_SHAPE
+          );
+          
+          let vertexOffset = 0;
+          
+          while (faceExplorer.More()) {
+            const face = ocInstance.TopoDS.Face_1(faceExplorer.Current());
+            const location = new ocInstance.TopLoc_Location_1();
+            // Use 3-parameter signature with Poly_MeshPurpose_NONE (or 0 as fallback)
+            const triangulation = ocInstance.Poly_MeshPurpose_NONE !== undefined 
+              ? ocInstance.BRep_Tool.Triangulation(face, location, ocInstance.Poly_MeshPurpose_NONE)
+              : ocInstance.BRep_Tool.Triangulation(face, location, 0); // 0 = Poly_MeshPurpose_NONE
+            
+            if (!triangulation.IsNull()) {
+              const transform = location.Transformation();
+              const tri = triangulation.get();
+              const nodeCount = tri.NbNodes();
+              const triangleCount = tri.NbTriangles();
+              
+              // Extract vertices
+              for (let i = 1; i <= nodeCount; i++) {
+                const node = tri.Node(i);
+                const transformedNode = node.Transformed(transform);
+                vertices.push(
+                  transformedNode.X(),
+                  transformedNode.Y(),
+                  transformedNode.Z()
+                );
+              }
+              
+              // Extract triangles
+              for (let i = 1; i <= triangleCount; i++) {
+                const triangle = tri.Triangle(i);
+                const n1 = triangle.Value(1) - 1 + vertexOffset;
+                const n2 = triangle.Value(2) - 1 + vertexOffset;
+                const n3 = triangle.Value(3) - 1 + vertexOffset;
+                
+                if (face.Orientation_1() === ocInstance.TopAbs_Orientation.TopAbs_REVERSED) {
+                  indices.push(n1, n3, n2);
+                } else {
+                  indices.push(n1, n2, n3);
+                }
+              }
+              
+              vertexOffset += nodeCount;
+            }
+            
+            faceExplorer.Next();
+          }
+          
+          log(`Extracted ${vertices.length/3} vertices, ${indices.length/3} triangles`, 'info');
+          
+          // Create Babylon mesh
+          const babylonMesh = new BABYLON.Mesh(name, scene);
+          const vertexData = new BABYLON.VertexData();
+          
+          vertexData.positions = vertices;
+          vertexData.indices = indices;
+          
+          BABYLON.VertexData.ComputeNormals(vertices, indices, normals);
+          vertexData.normals = normals;
+          
+          vertexData.applyToMesh(babylonMesh);
+          
+          // Material
+          const material = new BABYLON.StandardMaterial(name + "_mat", scene);
+          material.diffuseColor = new BABYLON.Color3(0.8, 0.6, 0.4);
+          material.specularColor = new BABYLON.Color3(0.3, 0.3, 0.3);
+          babylonMesh.material = material;
+          
+          log(`Mesh ${name} created successfully!`, 'success');
+          return babylonMesh;
+          
+        } catch (error) {
+          log('Error converting shape: ' + error.message, 'error');
+          console.error(error);
+          return null;
+        }
+      }
+      
+      function createSimpleBox() {
+        if (!ocInstance) {
+          log('OpenCascade not initialized', 'error');
+          return;
+        }
+        
+        try {
+          log('Creating simple box...', 'info');
+          
+          // Create a simple box using correct API
+          const origin = new ocInstance.gp_Pnt_3(0, 0, 0);
+          const box = new ocInstance.BRepPrimAPI_MakeBox_3(origin, 5, 4, 3);
+          const shape = box.Shape();
+          
+          const mesh = convertOCShapeToBabylonMesh(shape, 'SimpleBox');
+          if (mesh) {
+            currentMeshes.push(mesh);
+            log('Simple box created!', 'success');
+          }
+          
+        } catch (error) {
+          log('Error creating box: ' + error.message, 'error');
+          console.error(error);
+        }
+      }
+      
+      function createHouse() {
+        if (!ocInstance) {
+          log('OpenCascade not initialized', 'error');
+          return;
+        }
+        
+        try {
+          log('Creating house with OpenCascade.js...', 'info');
+          
+          const houseWidth = 10.0;
+          const houseDepth = 8.0;
+          const houseHeight = 6.0;
+          const roofHeight = 3.0;
+          
+          // Create the main body of the house using correct API
+          const origin = new ocInstance.gp_Pnt_3(0, 0, 0);
+          const houseBody = new ocInstance.BRepPrimAPI_MakeBox_3(
+            origin, houseWidth, houseDepth, houseHeight
+          ).Shape();
+          log('House body created', 'info');
+          
+          // Create the roof as a prism - using BRepBuilderAPI_MakePolygon for triangular wire
+          const p1 = new ocInstance.gp_Pnt_3(0, 0, houseHeight);
+          const p2 = new ocInstance.gp_Pnt_3(houseWidth, 0, houseHeight);
+          const p3 = new ocInstance.gp_Pnt_3(houseWidth / 2, 0, houseHeight + roofHeight);
+          
+          // Use BRepBuilderAPI_MakePolygon_3 for creating a triangular wire directly from 3 points
+          // Last parameter 'true' closes the polygon
+          const polygonBuilder = new ocInstance.BRepBuilderAPI_MakePolygon_3(p1, p2, p3, true);
+          const wire = polygonBuilder.Wire(); // This returns a proper TopoDS_Wire
+          
+          // Create face from wire
+          const roofFace = new ocInstance.BRepBuilderAPI_MakeFace_15(wire, true).Face();
+          log('Roof face created', 'info');
+          
+          // Extrude the roof face
+          const extrudeVec = new ocInstance.gp_Vec_4(0, houseDepth, 0);
+          const roof = new ocInstance.BRepPrimAPI_MakePrism_1(
+            roofFace, extrudeVec, false, true
+          ).Shape();
+          log('Roof extruded', 'info');
+          
+          // Combine house body and roof using Fuse
+          const house = new ocInstance.BRepAlgoAPI_Fuse_3(
+            houseBody, roof, new ocInstance.Message_ProgressRange_1()
+          ).Shape();
+          log('House and roof combined', 'info');
+          
+          // Convert to Babylon mesh
+          const mesh = convertOCShapeToBabylonMesh(house, 'House');
+          if (mesh) {
+            currentMeshes.push(mesh);
+            log('House created successfully!', 'success');
+          }
+          
+        } catch (error) {
+          log('Error creating house: ' + error.message, 'error');
+          console.error(error);
+        }
+      }
+      
+      function clearScene() {
+        currentMeshes.forEach(mesh => {
+          if (mesh.material) {
+            mesh.material.dispose();
+          }
+          mesh.dispose();
+        });
+        currentMeshes = [];
+        log('Scene cleared', 'info');
+      }
+      
+      // Button handlers
+      document.getElementById('createHouse').addEventListener('click', createHouse);
+      document.getElementById('createSimpleBox').addEventListener('click', createSimpleBox);
+      document.getElementById('clearScene').addEventListener('click', clearScene);
+    </script>
+  </body>
+</html>

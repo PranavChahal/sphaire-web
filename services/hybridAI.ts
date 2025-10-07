@@ -1,4 +1,3 @@
-import { localLLM } from './localLLM';
 import OpenAI from 'openai';
 
 const openai = new OpenAI({
@@ -50,7 +49,7 @@ export class HybridAIService {
 
     // Try local LLM first
     if (await this.isLocalLLMAvailable()) {
-      console.log('🤖 HYBRID-AI: Attempting local Code Llama 7B...');
+      console.log('HYBRID-AI: Attempting local Code Llama 7B...');
       
       try {
         const response = await localLLM.generateCode(prompt, {
@@ -60,13 +59,13 @@ export class HybridAIService {
           systemPrompt
         });
 
-        console.log('✅ HYBRID-AI: Local LLM succeeded');
+        console.log('HYBRID-AI: Local LLM succeeded');
         return {
           ...response,
           source: 'local'
         };
       } catch (error) {
-        console.warn('⚠️ HYBRID-AI: Local LLM failed, falling back to OpenAI:', error);
+        console.warn('HYBRID-AI: Local LLM failed, falling back to OpenAI:', error);
         this.localLLMAvailable = false;
       }
     } else {
@@ -106,7 +105,7 @@ export class HybridAIService {
         throw new Error('OpenAI returned empty response');
       }
 
-      console.log('✅ HYBRID-AI: OpenAI fallback succeeded');
+      console.log('HYBRID-AI: OpenAI fallback succeeded');
       
       return {
         content,
@@ -116,7 +115,7 @@ export class HybridAIService {
       };
 
     } catch (error) {
-      console.error('🚨 HYBRID-AI: Both local and OpenAI failed:', error);
+      console.error('HYBRID-AI: Both local and OpenAI failed:', error);
       throw new Error(`AI generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }

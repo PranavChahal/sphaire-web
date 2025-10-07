@@ -13,8 +13,10 @@ export interface UIState {
   cursorVisible: boolean;
   selectedVertices: VertexSelection[];
   activeMesh: Mesh | null;
-  subObjectMode: SubObjectMode;
+  subObjectMode: SubObjectMode | null;  // null means not in edit mode
   subObjectSelectedElements: number[];
+  suspendExternalMeshSync: boolean;  // Pause external mesh updates during edit mode
+  isEditMode: boolean;  // Derived state: true when subObjectMode !== null && activeMesh !== null
   setActiveTab: (tab: string) => void;
   toggleEditor: () => void;
   showEditor: () => void;
@@ -25,19 +27,24 @@ export interface UIState {
   clearSelectedVertices: () => void;
   isVertexSelected: (meshId: string, vertexIndex: number) => boolean;
   setActiveMesh: (mesh: Mesh | null) => void;
-  setSubObjectMode: (mode: SubObjectMode) => void;
+  setSubObjectMode: (mode: SubObjectMode | null) => void;
   setSubObjectSelectedElements: (elements: number[]) => void;
   clearSubObjectSelection: () => void;
+  enterEditMode: (mesh: Mesh, mode: SubObjectMode) => void;
+  exitEditMode: () => void;
+  setSuspendExternalMeshSync: (suspend: boolean) => void;
 }
 
 export const useUIStore = create<UIState>((set, get) => ({
-  activeTab: 'object',
+  activeTab: 'ai-modeling',
   editorVisible: false,
   cursorVisible: true,
   selectedVertices: [],
   activeMesh: null,
-  subObjectMode: 'vertex',
+  subObjectMode: null,  // null means not in edit mode
   subObjectSelectedElements: [],
+  suspendExternalMeshSync: false,
+  isEditMode: false,
   
   setActiveTab: (tab) => set({ activeTab: tab }),
   toggleEditor: () => set((state) => ({ editorVisible: !state.editorVisible })),
@@ -76,5 +83,23 @@ export const useUIStore = create<UIState>((set, get) => ({
   
   setSubObjectSelectedElements: (elements) => set({ subObjectSelectedElements: elements }),
   
-  clearSubObjectSelection: () => set({ subObjectSelectedElements: [] })
+  clearSubObjectSelection: () => set({ subObjectSelectedElements: [] }),
+
+  enterEditMode: (mesh, mode) => set({ 
+    activeMesh: mesh, 
+    subObjectMode: mode, 
+    isEditMode: true,
+    suspendExternalMeshSync: true,
+    subObjectSelectedElements: []
+  }),
+
+  exitEditMode: () => set({ 
+    activeMesh: null, 
+    subObjectMode: null, 
+    isEditMode: false,
+    suspendExternalMeshSync: false,
+    subObjectSelectedElements: []
+  }),
+
+  setSuspendExternalMeshSync: (suspend) => set({ suspendExternalMeshSync: suspend })
 }));

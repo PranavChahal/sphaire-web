@@ -27,30 +27,30 @@ const AIModelGenerator: React.FC<AIModelGeneratorProps> = ({ onCodeGenerated }) 
     setError(null);
 
     try {
-      console.log('🤖 AI-GENERATOR: Starting AI model generation for:', spec);
+      console.log('AI-GENERATOR: Starting AI model generation for:', spec);
       
       const result = await generateModelCode(spec);
-      console.log('✅ AI-GENERATOR: Generated code length:', result.code.length);
-      console.log('📝 AI-GENERATOR: Code preview:', result.code.substring(0, 200) + '...');
-      console.log('🔧 AI-GENERATOR: Backend:', result.backend);
+      console.log('AI-GENERATOR: Generated code length:', result.code.length);
+      console.log('AI-GENERATOR: Code preview:', result.code.substring(0, 200) + '...');
+      console.log('AI-GENERATOR: Backend:', result.backend);
       
       if (onCodeGenerated) {
         onCodeGenerated(result.code, result.backend as 'OpenCascade' | 'Babylon');
         return;
       }
 
-      console.log('🎯 AI-GENERATOR: Executing AI-generated code in scene...');
+      console.log('AI-GENERATOR: Executing AI-generated code in scene...');
       const shapeId = await executeModelCode(
         result.code, 
         result.backend as 'OpenCascade' | 'Babylon',
         { scene, store: useStore.getState() }
       );
       
-      console.log('✅ AI-GENERATOR: Successfully created shape with ID:', shapeId);
+      console.log('AI-GENERATOR: Successfully created shape with ID:', shapeId);
       console.log('🏁 AI-GENERATOR: AI model generation completed successfully!');
       
     } catch (err) {
-      console.error('🚨 AI-GENERATOR: Error in AI model generation:', err);
+      console.error('AI-GENERATOR: Error in AI model generation:', err);
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
     } finally {
       setIsGenerating(false);
@@ -78,7 +78,7 @@ const AIModelGenerator: React.FC<AIModelGeneratorProps> = ({ onCodeGenerated }) 
         
         <div className="flex items-center justify-between">
           <div className="text-xs text-sphaire-purple-light opacity-75">
-            {scene ? '✅ Scene ready' : '⏳ Waiting for scene...'}
+            {scene ? 'Scene ready' : '⏳ Waiting for scene...'}
           </div>
           <button
             type="submit"
@@ -92,7 +92,7 @@ const AIModelGenerator: React.FC<AIModelGeneratorProps> = ({ onCodeGenerated }) 
               </>
             ) : (
               <>
-                🤖 Generate Model
+                Generate Model
               </>
             )}
           </button>

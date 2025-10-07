@@ -1,97 +1,302 @@
-# Dependencies
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+# ===================================
+# Sphaire 3D - Comprehensive .gitignore
+# ===================================
 
-# Production builds
-.next/
-dist/
-build/
-out/
-
-# Environment variables
+# ===================================
+# SENSITIVE FILES - CRITICAL
+# ===================================
+# Environment variables with API keys
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+.env*.local
 
-# Deployment
+# API Keys and secrets
+*.key
+*.pem
+*.p12
+*.pfx
+secrets/
+.secrets
+
+# ===================================
+# DEPENDENCIES
+# ===================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.pnpm-store/
+
+# Package manager lock files (keep one, ignore others)
+# package-lock.json  # Uncomment if using yarn/pnpm
+# yarn.lock          # Uncomment if using npm/pnpm
+# pnpm-lock.yaml     # Uncomment if using npm/yarn
+
+# ===================================
+# NEXT.JS BUILD OUTPUT
+# ===================================
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+next-env.d.ts
+
+# ===================================
+# VERCEL
+# ===================================
 .vercel
-.netlify
+.vercel.json
 
-# IDE and OS files
-.DS_Store
+# ===================================
+# TESTING
+# ===================================
+coverage/
+*.lcov
+.nyc_output
+jest-coverage/
+cypress/videos
+cypress/screenshots
+.cache/
+
+# ===================================
+# DEVELOPMENT
+# ===================================
+# IDE and Editor files
 .vscode/
+!.vscode/settings.json.example
+!.vscode/extensions.json
 .idea/
 *.swp
 *.swo
 *~
+.DS_Store
+Thumbs.db
 
-# Logs
-logs
-*.log
-
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
-
-# Coverage directory used by tools like istanbul
-coverage/
-
-# TypeScript cache
+# TypeScript
 *.tsbuildinfo
+.tsc/
 
-# Optional npm cache directory
-.npm
-
-# Optional eslint cache
+# ESLint
 .eslintcache
 
-# Microbundle cache
-.rpt2_cache/
-.rts2_cache_cjs/
-.rts2_cache_es/
-.rts2_cache_umd/
+# ===================================
+# LOGS
+# ===================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# Optional REPL history
-.node_repl_history
-
-# Output of 'npm pack'
-*.tgz
-
-# Yarn Integrity file
-.yarn-integrity
-
-# parcel-bundler cache (https://parceljs.org/)
-.cache
-.parcel-cache
-
-# Next.js build output
-.next
-
-# Nuxt.js build / generate output
-.nuxt
-
-# Gatsby files
-.cache/
-public
-
-# Storybook build outputs
-.out
-.storybook-out
-
-# Temporary folders
+# ===================================
+# TEMPORARY FILES
+# ===================================
+.tmp/
 tmp/
 temp/
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~
+
+# ===================================
+# BABYLON.JS / 3D ASSETS
+# ===================================
+# Large 3D files (if not needed in repo)
+*.glb
+*.gltf
+*.stl
+*.obj
+*.fbx
+*.blend
+*.blend1
+*.max
+*.3ds
+
+# Asset caches
+.asset-cache/
+assets-cache/
+
+# OpenCascade builds (if any)
+opencascade-build/
+occt-build/
+
+# ===================================
+# SUPABASE
+# ===================================
+# Supabase local development
+.supabase/
+supabase/.branches/
+supabase/.temp/
+
+# Database dumps (if generated locally)
+*.sql.gz
+*.dump
+database-backup/
+
+# ===================================
+# OPERATING SYSTEM
+# ===================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# ===================================
+# PROJECT-SPECIFIC
+# ===================================
+# User uploads (if any)
+uploads/
+user-files/
+public/uploads/
+
+# Generated documentation
+docs/generated/
+api-docs/
+
+# Compiled workers
+workers/dist/
+workers/*.worker.js
+
+# Test files
+test-results/
+playwright-report/
+e2e-results/
 
 # Backup files
 backups/
 *.backup
 *.bak
 
-# Test environment
-thingi10k_env/
+# Debug files
+debug/
+*.debug.log
+
+# ===================================
+# MISC
+# ===================================
+# Lock files for specific tools
+.turbo/
+.rush/
+.nx/
+
+# Python (if using any Python tools)
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+env/
+.venv/
+
+# Ruby (if using any Ruby tools)
+*.gem
+*.rbc
+.bundle/
+vendor/bundle/
+
+# Rust (if using any Rust tools)
+target/
+Cargo.lock
+
+# Go (if using any Go tools)
+go.sum
+vendor/
+
+# ===================================
+# SECURITY - Additional Protection
+# ===================================
+# Certificate files
+*.cert
+*.crt
+*.cer
+*.der
+
+# Auth files
+auth.json
+credentials.json
+token.json
+service-account*.json
+
+# Config files with secrets
+*secret*.json
+*private*.json
+firebase-adminsdk*.json
+
+# ===================================
+# EXAMPLE FILES (Keep these)
+# ===================================
+# Negate example files to keep them in repo
+!.env.example
+!.env.local.example
+!config.example.json
+!settings.example.json
+
+# ===================================
+# DO NOT IGNORE
+# ===================================
+# Make sure important config files are tracked
+!.eslintrc.js
+!.prettierrc
+!next.config.js
+!tsconfig.json
+!babel.config.js
+!tailwind.config.js
+!postcss.config.js
+
+# Public assets (keep these)
+!public/**/*.png
+!public/**/*.jpg
+!public/**/*.svg
+!public/**/*.ico
+!public/**/*.webp
+
+# SEO files (keep these)
+!public/robots.txt
+!public/sitemap.xml
+!public/site.webmanifest
+
+# Supabase migrations (keep these)
+!supabase/migrations/*.sql
+!supabase/config.toml
+
+# Documentation (keep these)
+!docs/**/*.md
+!README.md
+!CONTRIBUTING.md
+!LICENSE

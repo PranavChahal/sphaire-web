@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>OpenCascade.js Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        line-height: 1.6;
+      }
+      #status {
+        margin-top: 20px;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        max-height: 500px;
+        overflow-y: auto;
+        background-color: #f9f9f9;
+      }
+      .log-entry {
+        margin: 5px 0;
+        padding: 5px;
+        border-bottom: 1px solid #eee;
+      }
+      .success {
+        color: green;
+      }
+      .error {
+        color: red;
+      }
+      .info {
+        color: blue;
+      }
+      .warning {
+        color: orange;
+      }
+      .object-details {
+        margin-left: 20px;
+        font-family: monospace;
+        white-space: pre-wrap;
+        background-color: #f0f0f0;
+        padding: 5px;
+        border-radius: 3px;
+      }
+      button {
+        padding: 8px 16px;
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-right: 10px;
+        margin-top: 10px;
+      }
+      button:hover {
+        background-color: #45a049;
+      }
+    </style>
+    <!-- Load OpenCascade.js as a module and expose it globally -->
+    <script type="module" src="js/opencascade-module-loader.js"></script>
+    <!-- Load the test script -->
+    <script src="js/opencascade-test.js"></script>
+  </head>
+  <body>
+    <h1>OpenCascade.js Test</h1>
+    <p>This page tests the OpenCascade.js functionality. Check the output below for results.</p>
+    
+    <button id="runTest">Run Test Again</button>
+    <button id="clearLog">Clear Log</button>
+    
+    <div id="status">
+      <div class="log-entry info">Testing OpenCascade.js...</div>
+    </div>
+    
+    <script>
+      // Update status based on console logs
+      const originalConsoleLog = console.log;
+      const originalConsoleError = console.error;
+      const originalConsoleWarn = console.warn;
+      const originalConsoleInfo = console.info;
+      
+      function formatValue(value) {
+        if (value === null) return 'null';
+        if (value === undefined) return 'undefined';
+        if (typeof value === 'object') {
+          try {
+            return JSON.stringify(value, null, 2);
+          } catch (e) {
+            return Object.prototype.toString.call(value);
+          }
+        }
+        return String(value);
+      }
+      
+      console.log = function() {
+        const args = Array.from(arguments).map(formatValue).join(' ');
+        document.getElementById('status').innerHTML += 
+          `<div class="log-entry success">✓ ${args}</div>`;
+        originalConsoleLog.apply(console, arguments);
+      };
+      
+      console.error = function() {
+        const args = Array.from(arguments).map(formatValue).join(' ');
+        document.getElementById('status').innerHTML += 
+          `<div class="log-entry error">✗ ${args}</div>`;
+        originalConsoleError.apply(console, arguments);
+      };
+      
+      console.warn = function() {
+        const args = Array.from(arguments).map(formatValue).join(' ');
+        document.getElementById('status').innerHTML += 
+          `<div class="log-entry warning">⚠ ${args}</div>`;
+        originalConsoleWarn.apply(console, arguments);
+      };
+      
+      console.info = function() {
+        const args = Array.from(arguments).map(formatValue).join(' ');
+        document.getElementById('status').innerHTML += 
+          `<div class="log-entry info">ℹ ${args}</div>`;
+        originalConsoleInfo.apply(console, arguments);
+      };
+      
+      // Add button event listeners
+      document.getElementById('runTest').addEventListener('click', function() {
+        console.info('Running test again...');
+        testOpenCascade();
+      });
+      
+      document.getElementById('clearLog').addEventListener('click', function() {
+        document.getElementById('status').innerHTML = 
+          '<div class="log-entry info">Log cleared. Ready for new test.</div>';
+      });
+    </script>
+  </body>
+</html>

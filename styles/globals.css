@@ -91,3 +91,96 @@
 .text-gradient {
   @apply text-gradient-purple;
 }
+
+/* Custom scrollbar utility class */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(108, 99, 255) rgb(30, 27, 75);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  @apply bg-sphaire-dark;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-sphaire-purple rounded-full;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  @apply bg-sphaire-pink bg-opacity-80;
+}
+
+/* Smooth Parametric Sliders */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: grab;
+}
+
+input[type="range"]:active {
+  cursor: grabbing;
+}
+
+input[type="range"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Webkit (Chrome, Safari, Edge) */
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgb(236, 72, 153), rgb(168, 85, 247));
+  cursor: grab;
+  box-shadow: 0 2px 8px rgba(236, 72, 153, 0.4);
+  transition: all 0.15s ease;
+}
+
+input[type="range"]:active::-webkit-slider-thumb {
+  cursor: grabbing;
+  transform: scale(1.15);
+  box-shadow: 0 4px 12px rgba(236, 72, 153, 0.6);
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 3px 10px rgba(236, 72, 153, 0.5);
+}
+
+/* Firefox */
+input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, rgb(236, 72, 153), rgb(168, 85, 247));
+  cursor: grab;
+  box-shadow: 0 2px 8px rgba(236, 72, 153, 0.4);
+  transition: all 0.15s ease;
+}
+
+input[type="range"]:active::-moz-range-thumb {
+  cursor: grabbing;
+  transform: scale(1.15);
+  box-shadow: 0 4px 12px rgba(236, 72, 153, 0.6);
+}
+
+input[type="range"]::-moz-range-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 3px 10px rgba(236, 72, 153, 0.5);
+}
+
+/* Firefox track */
+input[type="range"]::-moz-range-track {
+  background: transparent;
+  border: none;
+}

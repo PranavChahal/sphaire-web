@@ -87,7 +87,7 @@ export class GridSystemManager {
     this.gridMesh.position = this.config.position.clone();
     this.gridMesh.isPickable = false; // Grid should not interfere with picking
 
-    console.log('✅ GridSystem: Grid created successfully');
+    console.log('GridSystem: Grid created successfully');
     return this.gridMesh;
   }
 
@@ -110,7 +110,7 @@ export class GridSystemManager {
       // Update mesh position
       this.gridMesh.position = this.config.position.clone();
 
-      console.log('🔄 GridSystem: Configuration updated');
+      console.log('GridSystem: Configuration updated');
     }
   }
 
@@ -152,7 +152,7 @@ export class GridSystemManager {
     if (this.gridMaterial) {
       this.gridMaterial.lineColor = this.config.lineColor;
       this.gridMaterial.mainColor = this.config.mainColor;
-      console.log('🎨 GridSystem: Colors updated');
+      console.log('GridSystem: Colors updated');
     }
   }
 
@@ -205,7 +205,7 @@ export class GridSystemManager {
       this.gridMaterial = null;
     }
     
-    console.log('🧹 GridSystem: Grid disposed');
+    console.log('GridSystem: Grid disposed');
   }
 
   /**
@@ -227,7 +227,7 @@ export class GridSystemManager {
    */
   dispose(): void {
     this.disposeGrid();
-    console.log('🧹 GridSystem: Manager disposed');
+    console.log('GridSystem: Manager disposed');
   }
 }
 
@@ -277,7 +277,7 @@ export class AdvancedGridSystem extends GridSystemManager {
     zAxis.isPickable = false;
     this.axisLines.push(zAxis);
 
-    console.log('✅ AdvancedGrid: Axis lines created');
+    console.log('AdvancedGrid: Axis lines created');
   }
 
   /**
@@ -303,7 +303,7 @@ export class AdvancedGridSystem extends GridSystemManager {
     this.originMarker.position = Vector3.Zero();
     this.originMarker.isPickable = false;
 
-    console.log('✅ AdvancedGrid: Origin marker created');
+    console.log('AdvancedGrid: Origin marker created');
   }
 
   /**
@@ -325,7 +325,7 @@ export class AdvancedGridSystem extends GridSystemManager {
   dispose(): void {
     this.disposeAxisLines();
     super.dispose();
-    console.log('🧹 AdvancedGrid: Advanced manager disposed');
+    console.log('AdvancedGrid: Advanced manager disposed');
   }
 }
 

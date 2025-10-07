@@ -3,12 +3,12 @@
  * 
  * Single unified system replacing AdvancedGizmoSystem + useLighting dual approach
  * Features:
- * ✅ Single GizmoManager + UtilityLayerRenderer (eliminates conflicts)
- * ✅ Plugin-based extensibility for future tools (measurement, constraints, CAD)
- * ✅ Unified undo/redo for all transforms (meshes + lights)
- * ✅ React integration with centralized state management
- * ✅ Performance optimized with gizmo reuse and proper cleanup
- * ✅ Light integration via LightGizmo + TransformNode helpers
+ * Single GizmoManager + UtilityLayerRenderer (eliminates conflicts)
+ * Plugin-based extensibility for future tools (measurement, constraints, CAD)
+ * Unified undo/redo for all transforms (meshes + lights)
+ * React integration with centralized state management
+ * Performance optimized with gizmo reuse and proper cleanup
+ * Light integration via LightGizmo + TransformNode helpers
  */
 
 import {
@@ -179,7 +179,7 @@ export class UnifiedGizmoSystem {
     settings?: Partial<GizmoSettings>,
     callbacks?: GizmoCallbacks
   ) {
-    console.log('🎯 UnifiedGizmoSystem: Initializing with plugin architecture...');
+    console.log('UnifiedGizmoSystem: Initializing with plugin architecture...');
     
     this.scene = scene;
     this.camera = camera;
@@ -205,18 +205,18 @@ export class UnifiedGizmoSystem {
   
   private initialize(): void {
     try {
-      console.log('🔧 UnifiedGizmoSystem: Setting up core infrastructure...');
+      console.log('UnifiedGizmoSystem: Setting up core infrastructure...');
       
       // Create utility layer renderer for gizmos
       this.utilityLayerRenderer = new UtilityLayerRenderer(this.scene, false);
       this.utilityLayerRenderer.shouldRender = true;
       
-      // 🎯 CRITICAL FIX: Set render camera and configure utility layer (from old working system)
-      console.log('📷 DEBUGGING: Setting utility layer render camera...');
+      // CRITICAL FIX: Set render camera and configure utility layer (from old working system)
+      console.log('DEBUGGING: Setting utility layer render camera...');
       this.utilityLayerRenderer.setRenderCamera(this.camera);
       this.utilityLayerRenderer.utilityLayerScene.autoClearDepthAndStencil = false;
       
-      // 🚀 GIZMO VISIBILITY FIX: Configure utility layer to always render on top
+      // GIZMO VISIBILITY FIX: Configure utility layer to always render on top
       // This ensures gizmos are always visible even when objects are large
       this.utilityLayerRenderer.utilityLayerScene.autoClear = false;
       this.utilityLayerRenderer.utilityLayerScene.autoClearDepthAndStencil = false;
@@ -224,7 +224,7 @@ export class UnifiedGizmoSystem {
       // Create GizmoManager with utility layer
       this.gizmoManager = new GizmoManager(this.scene, /*thickness=*/1, this.utilityLayerRenderer);
       
-      console.log('📊 DEBUGGING: GizmoManager and UtilityLayer created with camera configuration:', {
+      console.log('DEBUGGING: GizmoManager and UtilityLayer created with camera configuration:', {
         cameraSet: !!this.camera,
         cameraName: this.camera.name,
         utilityLayerExists: !!this.utilityLayerRenderer,
@@ -236,10 +236,10 @@ export class UnifiedGizmoSystem {
       // Apply initial settings
       this.applySettings();
       
-      console.log('✅ UnifiedGizmoSystem: Initialization complete');
+      console.log('UnifiedGizmoSystem: Initialization complete');
       
     } catch (error) {
-      console.error('🚨 UnifiedGizmoSystem: Initialization failed:', error);
+      console.error('UnifiedGizmoSystem: Initialization failed:', error);
       throw new Error(`Failed to initialize UnifiedGizmoSystem: ${error}`);
     }
   }
@@ -247,7 +247,7 @@ export class UnifiedGizmoSystem {
   private setupGizmoManager(): void {
     if (!this.gizmoManager) return;
     
-    console.log('⚙️ UnifiedGizmoSystem: Configuring GizmoManager with official patterns...');
+    console.log('UnifiedGizmoSystem: Configuring GizmoManager with official patterns...');
     
     // Configure with official Babylon.js patterns
     this.gizmoManager.scaleRatio = this.settings.scaleRatio;
@@ -259,18 +259,18 @@ export class UnifiedGizmoSystem {
     this.gizmoManager.scaleGizmoEnabled = false;
     this.gizmoManager.boundingBoxGizmoEnabled = false;
     
-    // 🚀 Configure gizmos for always-on-top rendering
+    // Configure gizmos for always-on-top rendering
     this.configureGizmoVisibility();
   }
   
   /**
-   * 🚀 X-RAY GIZMO FIX: Configure gizmos to be visible THROUGH all objects
+   * X-RAY GIZMO FIX: Configure gizmos to be visible THROUGH all objects
    * This creates an X-ray effect so gizmos are never hidden by large objects
    */
   private configureGizmoVisibility(): void {
     if (!this.gizmoManager) return;
     
-    console.log('🔍 Configuring X-ray gizmo visibility (visible through all objects)...');
+    console.log('Configuring X-ray gizmo visibility (visible through all objects)...');
     
     // Function to apply X-ray effect to gizmo materials
     const configureXRayGizmoMaterials = (gizmo: any) => {
@@ -281,7 +281,7 @@ export class UnifiedGizmoSystem {
       
       gizmoMeshes.forEach((mesh: any) => {
         if (mesh.material) {
-          // 🔍 X-RAY EFFECT: Make gizmo visible through all objects
+          // X-RAY EFFECT: Make gizmo visible through all objects
           mesh.material.disableDepthWrite = true;  // Don't write to depth buffer
           mesh.material.depthFunction = Constants.ALWAYS; // Always pass depth test
           mesh.material.alphaMode = Constants.ALPHA_ADD; // Additive blending for visibility
@@ -320,7 +320,7 @@ export class UnifiedGizmoSystem {
     // Store the configuration function for later use when gizmos are created
     this.gizmoMaterialConfigurer = configureXRayGizmoMaterials;
     
-    console.log('✅ X-ray gizmo visibility configuration applied - gizmos now visible through all objects!');
+    console.log('X-ray gizmo visibility configuration applied - gizmos now visible through all objects!');
   }
   
   // =============================================================================
@@ -329,11 +329,11 @@ export class UnifiedGizmoSystem {
   
   select(object: SelectableObject | null): void {
     if (this.disposed) {
-      console.error('🚨 DEBUGGING: select() called on DISPOSED system!');
+      console.error('DEBUGGING: select() called on DISPOSED system!');
       return;
     }
     
-    console.log(`🎯 DEBUGGING: UnifiedGizmoSystem.select() called:`, {
+    console.log(`DEBUGGING: UnifiedGizmoSystem.select() called:`, {
       objectName: object?.name || 'null',
       currentSelection: this.selectedObject?.name || 'null',
       currentMode: this.currentMode,
@@ -343,7 +343,7 @@ export class UnifiedGizmoSystem {
     });
     
     if (this.selectedObject !== object) {
-      console.log('🔄 DEBUGGING: Selection is changing, clearing current selection...');
+      console.log('DEBUGGING: Selection is changing, clearing current selection...');
       this.clearCurrentSelection();
       this.selectedObject = object;
       
@@ -351,7 +351,7 @@ export class UnifiedGizmoSystem {
       this.callbacks.onSelectionChanged?.(object);
       
       if (object && this.currentMode !== 'none') {
-        console.log('🎯 DEBUGGING: Object selected and mode is not none, activating gizmo...');
+        console.log('DEBUGGING: Object selected and mode is not none, activating gizmo...');
         this.activateGizmoForSelection();
       } else {
         console.log('⏹️ DEBUGGING: No object or mode is none, not activating gizmo');
@@ -364,7 +364,7 @@ export class UnifiedGizmoSystem {
   setMode(mode: GizmoMode): void {
     if (this.disposed) return;
     
-    console.log(`🔄 UnifiedGizmoSystem: Setting mode to: ${mode}`);
+    console.log(`UnifiedGizmoSystem: Setting mode to: ${mode}`);
     
     if (this.currentMode !== mode) {
       this.currentMode = mode;
@@ -372,7 +372,7 @@ export class UnifiedGizmoSystem {
       
       // Enable the new gizmo mode immediately if we have an active selection
       if (this.selectedObject && mode !== 'none' && this.gizmoManager) {
-        console.log(`🔧 DEBUGGING: Enabling new gizmo mode: ${mode}`);
+        console.log(`DEBUGGING: Enabling new gizmo mode: ${mode}`);
         this.enableGizmoMode(mode);
       }
       
@@ -383,14 +383,14 @@ export class UnifiedGizmoSystem {
     }
   }
   
-  // 🎯 CRITICAL MISSING METHOD: Enable specific gizmo mode
+  // CRITICAL MISSING METHOD: Enable specific gizmo mode
   private enableGizmoMode(mode: GizmoMode): void {
     if (!this.gizmoManager) {
-      console.error('❌ DEBUGGING: enableGizmoMode called without GizmoManager');
+      console.error('DEBUGGING: enableGizmoMode called without GizmoManager');
       return;
     }
     
-    console.log(`🔧 DEBUGGING: enableGizmoMode(${mode}) called`);
+    console.log(`DEBUGGING: enableGizmoMode(${mode}) called`);
     
     // Disable all gizmos first
     this.gizmoManager.positionGizmoEnabled = false;
@@ -402,33 +402,33 @@ export class UnifiedGizmoSystem {
     switch (mode) {
       case 'position':
         this.gizmoManager.positionGizmoEnabled = true;
-        console.log('🎯 DEBUGGING: Position gizmo enabled');
+        console.log('DEBUGGING: Position gizmo enabled');
         break;
       case 'rotation':
         this.gizmoManager.rotationGizmoEnabled = true;
-        console.log('🎯 DEBUGGING: Rotation gizmo enabled');
+        console.log('DEBUGGING: Rotation gizmo enabled');
         break;
       case 'scale':
         this.gizmoManager.scaleGizmoEnabled = true;
-        console.log('🎯 DEBUGGING: Scale gizmo enabled');
+        console.log('DEBUGGING: Scale gizmo enabled');
         break;
       case 'boundingBox':
         this.gizmoManager.boundingBoxGizmoEnabled = true;
-        console.log('🎯 DEBUGGING: BoundingBox gizmo enabled');
+        console.log('DEBUGGING: BoundingBox gizmo enabled');
         break;
       case 'none':
-        console.log('🎯 DEBUGGING: All gizmos disabled (none mode)');
+        console.log('DEBUGGING: All gizmos disabled (none mode)');
         break;
       default:
-        console.warn(`⚠️ DEBUGGING: Unknown gizmo mode: ${mode}`);
+        console.warn(`DEBUGGING: Unknown gizmo mode: ${mode}`);
     }
     
-    // 🔍 Apply X-ray configuration after enabling gizmo
+    // Apply X-ray configuration after enabling gizmo
     if (mode !== 'none' && this.gizmoMaterialConfigurer) {
       // Small delay to ensure gizmo is fully created before applying X-ray effect
       setTimeout(() => {
         if (this.gizmoManager?.gizmos && this.gizmoMaterialConfigurer) {
-          console.log('🔍 Applying X-ray effect to newly enabled gizmo...');
+          console.log('Applying X-ray effect to newly enabled gizmo...');
           switch (mode) {
             case 'position':
               this.gizmoMaterialConfigurer!(this.gizmoManager.gizmos.positionGizmo);
@@ -447,14 +447,14 @@ export class UnifiedGizmoSystem {
       }, 100); // 100ms delay to ensure gizmo creation is complete
     }
     
-    console.log(`✅ DEBUGGING: Gizmo mode ${mode} enabled successfully`);
+    console.log(`DEBUGGING: Gizmo mode ${mode} enabled successfully`);
   }
   
   private activateGizmoForSelection(): void {
-    console.log('🎯 DEBUGGING: activateGizmoForSelection() called');
+    console.log('DEBUGGING: activateGizmoForSelection() called');
     
     if (!this.selectedObject || !this.gizmoManager) {
-      console.error('🚨 DEBUGGING: activateGizmoForSelection FAILED - missing dependencies:', {
+      console.error('DEBUGGING: activateGizmoForSelection FAILED - missing dependencies:', {
         selectedObject: !!this.selectedObject,
         selectedObjectName: this.selectedObject?.name || 'null',
         gizmoManager: !!this.gizmoManager,
@@ -464,8 +464,8 @@ export class UnifiedGizmoSystem {
       return;
     }
 
-    console.log(`🚀 DEBUGGING: Activating gizmo for: ${this.selectedObject.name} in mode: ${this.currentMode}`);
-    console.log('📊 DEBUGGING: GizmoManager state before activation:', {
+    console.log(`DEBUGGING: Activating gizmo for: ${this.selectedObject.name} in mode: ${this.currentMode}`);
+    console.log('DEBUGGING: GizmoManager state before activation:', {
       attachedMesh: this.gizmoManager.attachableMeshes?.length || 0,
       positionGizmoExists: !!this.gizmoManager.gizmos?.positionGizmo,
       utilityLayer: !!this.gizmoManager.utilityLayer
@@ -473,13 +473,13 @@ export class UnifiedGizmoSystem {
 
     try {
       // Clear any existing gizmo first
-      console.log('🧹 DEBUGGING: Clearing existing gizmo attachment...');
+      console.log('DEBUGGING: Clearing existing gizmo attachment...');
       this.gizmoManager.attachToMesh(null);
       
       if (this.selectedObject instanceof AbstractMesh) {
         // Handle mesh selection
-        console.log(`🎯 DEBUGGING: Attaching gizmo to MESH: ${this.selectedObject.name}`);
-        console.log('📊 DEBUGGING: Mesh properties:', {
+        console.log(`DEBUGGING: Attaching gizmo to MESH: ${this.selectedObject.name}`);
+        console.log('DEBUGGING: Mesh properties:', {
           meshName: this.selectedObject.name,
           meshId: this.selectedObject.id,
           meshEnabled: this.selectedObject.isEnabled(),
@@ -499,7 +499,7 @@ export class UnifiedGizmoSystem {
           
           // Adjust rotation gizmo size based on mesh scale
           if (this.gizmoManager.gizmos.rotationGizmo) {
-            console.log(`🔧 DEBUGGING: Adjusting rotation gizmo for scaled mesh (avg scale: ${avgScale})`);
+            console.log(`DEBUGGING: Adjusting rotation gizmo for scaled mesh (avg scale: ${avgScale})`);
             // Ensure rotation gizmo is properly sized relative to the scaled mesh
             this.gizmoManager.gizmos.rotationGizmo.scaleRatio = Math.max(1.0, avgScale * 0.8);
             
@@ -509,11 +509,11 @@ export class UnifiedGizmoSystem {
           }
         }
         
-        // 🎯 CRITICAL FIX: Enable the specific gizmo mode after attachment!
-        console.log('🔧 DEBUGGING: Enabling gizmo mode after attachment...');
+        // CRITICAL FIX: Enable the specific gizmo mode after attachment!
+        console.log('DEBUGGING: Enabling gizmo mode after attachment...');
         this.enableGizmoMode(this.currentMode);
         
-        console.log('📊 DEBUGGING: GizmoManager state after mesh attachment and mode activation:', {
+        console.log('DEBUGGING: GizmoManager state after mesh attachment and mode activation:', {
           attachedMesh: this.gizmoManager.attachableMeshes?.length || 0,
           positionGizmoExists: !!this.gizmoManager.gizmos?.positionGizmo,
           positionGizmoEnabled: this.gizmoManager.positionGizmoEnabled,
@@ -522,21 +522,21 @@ export class UnifiedGizmoSystem {
           currentMode: this.currentMode
         });
         
-        console.log(`✅ DEBUGGING: Mesh gizmo activated and mode enabled successfully for ${this.selectedObject.name}`);
+        console.log(`DEBUGGING: Mesh gizmo activated and mode enabled successfully for ${this.selectedObject.name}`);
       } else if (this.selectedObject instanceof Light) {
         // Handle light selection via plugin
-        console.log(`💡 DEBUGGING: Handling LIGHT selection: ${this.selectedObject.name}`);
+        console.log(`DEBUGGING: Handling LIGHT selection: ${this.selectedObject.name}`);
         const lightPlugin = this.plugins.get('light');
         if (lightPlugin) {
           // Note: selectLight method not available on IGizmoPlugin interface
-          console.log(`✅ DEBUGGING: Light plugin found for ${this.selectedObject.name}`);
+          console.log(`DEBUGGING: Light plugin found for ${this.selectedObject.name}`);
         } else {
-          console.error('❌ DEBUGGING: Light plugin not found');
+          console.error('DEBUGGING: Light plugin not found');
         }
       }
     } catch (error) {
-      console.error('🚨 DEBUGGING: Error activating gizmo:', error);
-      console.error('🚨 DEBUGGING: Error stack:', (error as Error).stack);
+      console.error('DEBUGGING: Error activating gizmo:', error);
+      console.error('DEBUGGING: Error stack:', (error as Error).stack);
     }
     
     // No need to set up transform observers here as they're handled elsewhere
@@ -735,11 +735,11 @@ export class UnifiedGizmoSystem {
   
   dispose(): void {
     if (this.disposed) {
-      console.warn('⚠️ DEBUGGING: dispose() called on already disposed system!');
+      console.warn('DEBUGGING: dispose() called on already disposed system!');
       return;
     }
     
-    console.log('🗑️ DEBUGGING: UnifiedGizmoSystem.dispose() called - STARTING DISPOSAL...', {
+    console.log('DEBUGGING: UnifiedGizmoSystem.dispose() called - STARTING DISPOSAL...', {
       timestamp: Date.now(),
       selectedObject: this.selectedObject?.name || 'null',
       gizmoManagerExists: !!this.gizmoManager,
@@ -749,49 +749,49 @@ export class UnifiedGizmoSystem {
     
     this.disposed = true;
     
-    console.log('🧹 DEBUGGING: Clearing current selection...');
+    console.log('DEBUGGING: Clearing current selection...');
     this.clearCurrentSelection();
     
-    console.log('🧹 DEBUGGING: Cleaning up observers...');
+    console.log('DEBUGGING: Cleaning up observers...');
     this.cleanupObservers();
     
     // Dispose plugins
-    console.log('🧹 DEBUGGING: Disposing plugins...');
+    console.log('DEBUGGING: Disposing plugins...');
     for (const [name, plugin] of this.plugins) {
       try {
         plugin.dispose();
-        console.log(`✅ DEBUGGING: Plugin '${name}' disposed successfully`);
+        console.log(`DEBUGGING: Plugin '${name}' disposed successfully`);
       } catch (error) {
-        console.error(`❌ DEBUGGING: Error disposing plugin '${name}':`, error);
+        console.error(`DEBUGGING: Error disposing plugin '${name}':`, error);
       }
     }
     this.plugins.clear();
     
     // Dispose gizmo manager
     if (this.gizmoManager) {
-      console.log('🧹 DEBUGGING: Disposing GizmoManager...');
+      console.log('DEBUGGING: Disposing GizmoManager...');
       try {
         this.gizmoManager.dispose();
-        console.log('✅ DEBUGGING: GizmoManager disposed successfully');
+        console.log('DEBUGGING: GizmoManager disposed successfully');
       } catch (error) {
-        console.error('❌ DEBUGGING: Error disposing GizmoManager:', error);
+        console.error('DEBUGGING: Error disposing GizmoManager:', error);
       }
       this.gizmoManager = null;
     }
     
     // Dispose utility layer
     if (this.utilityLayerRenderer) {
-      console.log('🧹 DEBUGGING: Disposing UtilityLayerRenderer...');
+      console.log('DEBUGGING: Disposing UtilityLayerRenderer...');
       try {
         this.utilityLayerRenderer.dispose();
-        console.log('✅ DEBUGGING: UtilityLayerRenderer disposed successfully');
+        console.log('DEBUGGING: UtilityLayerRenderer disposed successfully');
       } catch (error) {
-        console.error('❌ DEBUGGING: Error disposing UtilityLayerRenderer:', error);
+        console.error('DEBUGGING: Error disposing UtilityLayerRenderer:', error);
       }
       this.utilityLayerRenderer = null;
     }
     
-    console.log('✅ DEBUGGING: UnifiedGizmoSystem disposal completed at', Date.now());
+    console.log('DEBUGGING: UnifiedGizmoSystem disposal completed at', Date.now());
   }
   
   // =============================================================================

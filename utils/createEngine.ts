@@ -40,13 +40,13 @@ function patchEnginePrototype() {
       enumerable: true
     });
     
-    console.log('✅ Applied wipeCaches patch to Engine prototype');
+    console.log('Applied wipeCaches patch to Engine prototype');
   }
 }
 
 function createEngineImpl(canvas: HTMLCanvasElement, options?: any): Engine {
   try {
-    console.log('🔒 Creating ultra-defensive engine instance');
+    console.log('Creating ultra-defensive engine instance');
     
     patchEnginePrototype();
     
@@ -73,7 +73,7 @@ function createEngineImpl(canvas: HTMLCanvasElement, options?: any): Engine {
     }
     
     if (typeof engine.wipeCaches !== 'function') {
-      console.warn('⚠️ CRITICAL: wipeCaches not found on engine! Adding emergency implementation...');
+      console.warn('CRITICAL: wipeCaches not found on engine! Adding emergency implementation...');
       
       const safeWipeCaches = function(this: any) {
         console.log('🧯 Emergency wipeCaches invoked');  
@@ -105,7 +105,7 @@ function createEngineImpl(canvas: HTMLCanvasElement, options?: any): Engine {
       // Create a robust wrapper with error handling
       const safeWrapperWipeCaches = function(this: any) {
         try {
-          console.log('🔄 Monitored wipeCaches called');
+          console.log('Monitored wipeCaches called');
           return originalWipeCaches.call(this);
         } catch (error) {
           console.warn('🛑 Native wipeCaches failed with error, using fallback', error);
@@ -134,7 +134,7 @@ function createEngineImpl(canvas: HTMLCanvasElement, options?: any): Engine {
 // Ensure the patch is applied early in browser context
 if (typeof window !== 'undefined') {
   setTimeout(() => {
-    console.log('🔄 Auto-applying engine prototype patch');
+    console.log('Auto-applying engine prototype patch');
     patchEnginePrototype();
   }, 0);
 }

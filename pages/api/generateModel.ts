@@ -43,7 +43,7 @@ export default async function handler(
   }
 
   try {
-    console.log('🎯 Generating 3D model with GPT-4o for prompt:', prompt.substring(0, 100) + '...');
+    console.log('Generating 3D model with GPT-4o for prompt:', prompt.substring(0, 100) + '...');
     
     // Build context-aware prompts using our prompt engineering system
     const systemPrompt = promptContext.buildSystemPrompt() + `
@@ -73,13 +73,13 @@ SPECIAL INSTRUCTIONS FOR 3D MODEL GENERATION:
     const generatedResponse = response.choices[0]?.message?.content?.trim() || '';
     
     if (!generatedResponse) {
-      console.error('❌ OpenAI returned empty response');
+      console.error('OpenAI returned empty response');
       return res.status(500).json({ 
         error: 'AI returned empty response. Please try again.' 
       });
     }
 
-    console.log('📦 Raw AI response length:', generatedResponse.length);
+    console.log('Raw AI response length:', generatedResponse.length);
     
     // Try to parse JSON response
     let parsedResponse: { code: string; backend: string };
@@ -94,7 +94,7 @@ SPECIAL INSTRUCTIONS FOR 3D MODEL GENERATION:
       
       parsedResponse = JSON.parse(cleanResponse);
     } catch (parseError) {
-      console.error('⚠️  Failed to parse JSON response, using fallback:', parseError);
+      console.error('Failed to parse JSON response, using fallback:', parseError);
       
       // Fallback: treat the entire response as code
       parsedResponse = {
@@ -104,14 +104,14 @@ SPECIAL INSTRUCTIONS FOR 3D MODEL GENERATION:
     }
     
     if (!parsedResponse.code || parsedResponse.code.trim() === '') {
-      console.error('❌ Parsed response contains no code');
+      console.error('Parsed response contains no code');
       return res.status(500).json({ 
         error: 'Generated response contains no executable code.' 
       });
     }
 
-    console.log('✅ Generated 3D model code length:', parsedResponse.code.length);
-    console.log('🔧 Using backend:', parsedResponse.backend);
+    console.log('Generated 3D model code length:', parsedResponse.code.length);
+    console.log('Using backend:', parsedResponse.backend);
     
     return res.status(200).json({
       code: parsedResponse.code,
@@ -119,7 +119,7 @@ SPECIAL INSTRUCTIONS FOR 3D MODEL GENERATION:
       model: 'gpt-4o'
     });
   } catch (error: any) {
-    console.error('🚨 Error in 3D model generation:', error);
+    console.error('Error in 3D model generation:', error);
     return res.status(500).json({ 
       error: `3D model generation failed: ${error.message || 'Unknown error'}` 
     });

@@ -1,39 +1,29 @@
 import type { NextPage } from 'next';
 import React, { useEffect } from 'react';
-import Head from 'next/head';
+import SEOHead from '../components/SEOHead';
 import HeaderPerfect from '../components/HeaderPerfect';
 import { ViewportProduction } from '../components/ViewportProduction';
 import Sidebar from '../components/Sidebar';
-import CodeViewer from '../components/CodeViewer';
 import VoiceModule from '../components/VoiceModule';
+import AIContextPanel from '../components/AIContextPanel';
 import { useUIStore } from '../store/uiStore';
 import { ModalProvider } from '../contexts/ModalContext';
 
 
 const Home: NextPage = () => {
-  console.log('🔍 Rendering Home component');
-  const { activeTab, editorVisible, setActiveTab, showEditor, hideEditor } = useUIStore();
+  console.log('Rendering Home component');
+  const { activeTab, setActiveTab } = useUIStore();
   
-  // Code viewer ref for external control
-  const codeViewerRef = React.useRef(null);
-  
-  useEffect(() => {
-    if (activeTab === 'code-editor') {
-      showEditor();
-    } else {
-      hideEditor();
-    }
-  }, [activeTab, showEditor, hideEditor]);
-  
-  console.log('🔍 Home component useEffect setup complete');
+  console.log('Home component useEffect setup complete');
   return (
     <ModalProvider>
         <div className="h-screen w-screen flex flex-col bg-gray-900 text-white overflow-hidden">
-          <Head>
-            <title>Sphaire - 3D Modeling App</title>
-            <meta name="description" content="A modern 3D modeling application" />
-            <link rel="icon" href="/favicon.ico" />
-          </Head>
+          <SEOHead 
+            title="Sphaire3D - AI-Powered 3D Modeling & Design Platform | Create 3D Models with AI"
+            description="Transform ideas into 3D models instantly with AI. Sphaire3D is a free online 3D modeling platform combining artificial intelligence with professional CAD tools. Create, edit, and export 3D designs in seconds."
+            keywords="3D AI, AI 3D modeling, 3D design AI, AI CAD, parametric 3D modeling, AI mesh generation, 3D editor online, free CAD software, AI 3D design, OpenCascade AI, Sphaire, Sphaire3D, sphere 3D, AI modeling tool, online 3D software, AI-powered modeling, instant 3D generation, AI parametric design, 3D AI generator, AI-assisted CAD"
+            canonicalUrl="https://sphaire3d.design"
+          />
           
           <HeaderPerfect />
           
@@ -42,15 +32,9 @@ const Home: NextPage = () => {
             
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col overflow-hidden">
-              <div className={`${editorVisible ? 'flex-1' : 'h-full'} overflow-hidden transition-all duration-300`}>
+              <div className="h-full overflow-hidden">
                 <ViewportProduction />
               </div>
-              
-              {editorVisible && (
-                <div className="h-1/3 border-t border-gray-700 transition-all duration-300">
-                  <CodeViewer ref={codeViewerRef} />
-                </div>
-              )}
             </div>
             
             {activeTab === 'voice' && (
@@ -59,6 +43,9 @@ const Home: NextPage = () => {
               </div>
             )}
           </div>
+          
+          {/* AI Context Panel - Bottom Right */}
+          <AIContextPanel />
         </div>
       </ModalProvider>
   );

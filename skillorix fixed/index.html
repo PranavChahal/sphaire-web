@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Babylon.js 3D Viewer</title>
+    <link rel="stylesheet" href="css/styles.css" />
+    <!-- Load Babylon.js from CDN -->
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+    <script src="https://cdn.babylonjs.com/gui/babylon.gui.js"></script>
+    <script src="https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
+    <!-- Load OpenCascade.js - With CDN and local fallback options -->
+    <!-- Note: CDN version may be blocked by browser security restrictions -->
+    
+    <!-- Option 1: CDN version (may be blocked) -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/opencascade.js@2.0.0-beta.4fa3125/dist/opencascade.js"></script> -->
+
+    <!-- Load OpenCascade.js as a module and expose it globally -->
+    <script type="module" src="js/opencascade-module-loader.js"></script>
+    
+    <!-- IMPORTANT: OpenCascade.js is now installed via the lib/install-opencascade.sh script -->
+    <!-- See lib/opencascade-installation.md for detailed instructions -->
+    
+    <!-- The application will still function without OpenCascade.js, but with limited functionality -->
+  </head>
+  <body>
+    <canvas id="renderCanvas"></canvas>
+    <script src="js/ui.js"></script>
+    <!-- OLD MODEL LOADERS - Commented out to avoid conflicts with unified loader -->
+    <!-- <script src="js/model-loader.js"></script> -->
+    <!-- <script src="js/opencascade-loader.js"></script> -->
+    <script src="js/unified-model-loader.js?v=13"></script>
+    <script src="js/parametric-opencascade.js"></script>
+    <script src="js/opencascade-sample.js"></script>
+    <script src="js/opencascade-code-prompt.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html>

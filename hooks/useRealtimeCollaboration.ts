@@ -28,6 +28,9 @@ export const useRealtimeCollaboration = ({
   onPresenceUpdate,
   onRealtimeEvent
 }: UseRealtimeCollaborationProps) => {
+  // Mark unused parameters as intentionally unused for linting
+  void fileId;
+  void onPresenceUpdate;
   const [collaborators] = useState<CollaboratorPresence[]>([])
   const [isConnected] = useState(false)
   const [editingObject] = useState<string | null>(null)
@@ -39,6 +42,19 @@ export const useRealtimeCollaboration = ({
   const broadcastDeleteObject = () => {}
   const broadcastCADOperation = () => {}
 
+  // Additional compatibility no-ops to satisfy callers
+  const broadcastEvent = (event: any) => {
+    // Optionally echo to onRealtimeEvent for local handling
+    try { onRealtimeEvent && onRealtimeEvent(event as any) } catch {}
+  }
+  const startEditingObject = async (_objectId: string): Promise<boolean> => {
+    // Always allow editing in stubbed mode
+    return true
+  }
+  const stopEditingObject = () => {}
+  const isObjectLocked = (_objectId: string): { email: string } | null => null
+  const updateCursorPosition = (_pos: { x: number; y: number; z: number }) => {}
+
   return {
     collaborators,
     isConnected,
@@ -47,6 +63,12 @@ export const useRealtimeCollaboration = ({
     broadcastTransform,
     broadcastAddObject,
     broadcastDeleteObject,
-    broadcastCADOperation
+    broadcastCADOperation,
+    // Compatibility fields
+    broadcastEvent,
+    startEditingObject,
+    stopEditingObject,
+    isObjectLocked,
+    updateCursorPosition
   }
 }

@@ -183,7 +183,7 @@ describe('OCCT Canary Tests', () => {
     harness?.destroy();
   });
 
-  describe('🔧 Worker Initialization', () => {
+  describe('Worker Initialization', () => {
     test('should initialize worker successfully', async () => {
       // Already tested in beforeAll, but verify state
       expect(harness).toBeDefined();
@@ -195,7 +195,7 @@ describe('OCCT Canary Tests', () => {
     });
   });
 
-  describe('📦 Basic Geometry Creation', () => {
+  describe('Basic Geometry Creation', () => {
     test('should create basic primitives', async () => {
       const testCases = [
         { name: 'box', code: 'return occ.createBox(2, 2, 2);' },
@@ -235,7 +235,7 @@ describe('OCCT Canary Tests', () => {
     });
   });
 
-  describe('🔧 Boolean Operations', () => {
+  describe('Boolean Operations', () => {
     test('should perform union operations', async () => {
       const code = `
         const box1 = occ.createBox(2, 2, 2);
@@ -263,7 +263,7 @@ describe('OCCT Canary Tests', () => {
     });
   });
 
-  describe('🎯 Tessellation Pipeline', () => {
+  describe('Tessellation Pipeline', () => {
     test('should generate valid mesh data', async () => {
       const result = await harness.executeCode('return occ.createBox(1, 1, 1);');
       
@@ -296,7 +296,7 @@ describe('OCCT Canary Tests', () => {
     });
   });
 
-  describe('⚡ Error Handling & Edge Cases', () => {
+  describe('Error Handling & Edge Cases', () => {
     test('should handle syntax errors gracefully', async () => {
       const invalidCode = 'invalid javascript syntax {{{';
       
@@ -316,7 +316,7 @@ describe('OCCT Canary Tests', () => {
     });
   });
 
-  describe('🚀 Performance & Memory', () => {
+  describe('Performance & Memory', () => {
     test('should complete tessellation within reasonable time', async () => {
       const startTime = Date.now();
       
@@ -348,7 +348,7 @@ describe('OCCT Canary Tests', () => {
     });
   });
 
-  describe('🎨 AI Code Patterns', () => {
+  describe('AI Code Patterns', () => {
     test('should execute typical AI-generated patterns', async () => {
       const aiPatterns = [
         // Pattern 1: Basic CAD workflow

@@ -281,7 +281,7 @@ const MonacoEditor = forwardRef<MonacoEditorRef>((_, ref) => {
                           <span className="truncate">{file.name}</span>
                           {file.isGenerated && (
                             <span className="text-[10px] bg-sphaire-pink px-1 rounded">
-                              {file.generatedBy === 'babylon' ? '🎮' : '🔧'}
+                              {file.generatedBy === 'babylon' ? '' : ''}
                             </span>
                           )}
                         </div>

@@ -92,9 +92,11 @@ const ObjectItem: React.FC<{
   // Handle object duplication
   const handleDuplicate = (e: React.MouseEvent) => {
     e.stopPropagation();
+    // DISABLED: Duplicate addShape call causing mesh sync interference
     // Create a copy with a new ID by adding "copy" to the id
-    const newObjectData = { ...object };
-    store.addShape(newObjectData);
+    // const newObjectData = { ...object };
+    // store.addShape(newObjectData);
+    console.log('DISABLED: ObjectManager duplicate function to prevent addShape interference');
   };
   
   // Handle renaming
@@ -236,40 +238,40 @@ const ObjectManager: React.FC = () => {
   const { scene } = useSceneStore();
   const [searchTerm, setSearchTerm] = useState('');
   
-  // 🚨 BULLETPROOF: Scene synchronization with timing protection
+  // BULLETPROOF: Scene synchronization with timing protection
   useEffect(() => {
-    console.log('🔄 ObjectManager: Component mounted/scene changed, validating scene state');
+    console.log('ObjectManager: Component mounted/scene changed, validating scene state');
     if (scene && scene.isReady && scene.isReady()) {
       // Scene is valid and ready
-      console.log('✅ ObjectManager: Scene is available and ready');
-      console.log('📊 ObjectManager: Scene meshes count:', scene.meshes?.length || 0);
-      console.log('📊 ObjectManager: Scene metadata:', scene.metadata);
+      console.log('ObjectManager: Scene is available and ready');
+      console.log('ObjectManager: Scene meshes count:', scene.meshes?.length || 0);
+      console.log('ObjectManager: Scene metadata:', scene.metadata);
     } else if (scene) {
       // Scene exists but may not be fully initialized
-      console.log('⚠️ ObjectManager: Scene exists but not ready, waiting...');
+      console.log('ObjectManager: Scene exists but not ready, waiting...');
       // Set up a scene ready listener
       const onSceneReady = () => {
-        console.log('✅ ObjectManager: Scene is now ready after waiting');
+        console.log('ObjectManager: Scene is now ready after waiting');
         // Force a re-render by updating a local state if needed
       };
       if (scene.onReadyObservable) {
         scene.onReadyObservable.addOnce(onSceneReady);
       }
     } else {
-      console.log('⚠️ ObjectManager: Scene is null, waiting for Viewport initialization');
+      console.log('ObjectManager: Scene is null, waiting for Viewport initialization');
     }
   }, [scene]); // Re-run when scene changes
 
-  // ✨ FIX #3: Get both created shapes AND imported meshes
+  // FIX #3: Get both created shapes AND imported meshes
   const createdObjects = store.shapes;
   const importedMeshes = scene?.metadata?.importedMeshes || [];
 
-  // 🔍 DEBUG: Log imported mesh detection
-  console.log('🔍 ObjectManager: Scene available:', !!scene);
-  console.log('🔍 ObjectManager: Scene metadata:', scene?.metadata);
-  console.log('🔍 ObjectManager: Imported meshes found:', importedMeshes.length);
+  // DEBUG: Log imported mesh detection
+  console.log('ObjectManager: Scene available:', !!scene);
+  console.log('ObjectManager: Scene metadata:', scene?.metadata);
+  console.log('ObjectManager: Imported meshes found:', importedMeshes.length);
   if (importedMeshes.length > 0) {
-    console.log('🔍 ObjectManager: Imported mesh names:', importedMeshes.map((m: any) => m.name));
+    console.log('ObjectManager: Imported mesh names:', importedMeshes.map((m: any) => m.name));
   }
 
   
@@ -304,14 +306,16 @@ const ObjectManager: React.FC = () => {
     // Insert it at the new position
     updatedObjects.splice(hoverIndex, 0, draggedObject);
     
+    // DISABLED: Bulk addShape operation causing mesh sync interference
     // Update store with the new order
     // Note: We need to update the store's shapes array directly
     // Since there's no dedicated moveObject function in the store
     // This is a workaround - ideally we'd add a moveObject function to the store
-    store.clearShapes();
-    updatedObjects.forEach((obj) => {
-      store.addShape(obj);
-    });
+    // store.clearShapes();
+    // updatedObjects.forEach((obj) => {
+    //   store.addShape(obj);
+    // });
+    console.log('DISABLED: ObjectManager bulk addShape operation to prevent mesh sync interference');
   };
 
   return (

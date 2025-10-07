@@ -93,7 +93,7 @@ export class CommandManager {
       this.currentIndex--;
     }
     
-    console.log(`✅ Executed: ${command.description}`);
+    console.log(`Executed: ${command.description}`);
   }
 
   undo(): boolean {
@@ -104,7 +104,7 @@ export class CommandManager {
       console.log(`↩️ Undone: ${command.description}`);
       return true;
     }
-    console.log('⚠️ Nothing to undo');
+    console.log('Nothing to undo');
     return false;
   }
 
@@ -116,7 +116,7 @@ export class CommandManager {
       console.log(`↪️ Redone: ${command.description}`);
       return true;
     }
-    console.log('⚠️ Nothing to redo');
+    console.log('Nothing to redo');
     return false;
   }
 
@@ -131,7 +131,7 @@ export class CommandManager {
   clear(): void {
     this.commandHistory = [];
     this.currentIndex = -1;
-    console.log('🧹 Command history cleared');
+    console.log('Command history cleared');
   }
 }
 
@@ -152,7 +152,7 @@ export class EditControlManager {
 
   constructor(_scene: Scene, _camera: Camera, _canvas: HTMLCanvasElement) {
     // Store references for potential future use (avoiding unused parameter warnings)
-    console.log('🎮 EditControl Manager initialized with scene, camera, canvas');
+    console.log('EditControl Manager initialized with scene, camera, canvas');
     this.commandManager = new CommandManager();
   }
 
@@ -163,7 +163,7 @@ export class EditControlManager {
 
   setTranslationEnabled(enabled: boolean): void {
     this._translationEnabled = enabled;
-    console.log(`🔄 Translation ${enabled ? 'enabled' : 'disabled'}`);
+    console.log(`Translation ${enabled ? 'enabled' : 'disabled'}`);
   }
 
   isRotationEnabled(): boolean {
@@ -172,7 +172,7 @@ export class EditControlManager {
 
   setRotationEnabled(enabled: boolean): void {
     this._rotationEnabled = enabled;
-    console.log(`🔄 Rotation ${enabled ? 'enabled' : 'disabled'}`);
+    console.log(`Rotation ${enabled ? 'enabled' : 'disabled'}`);
   }
 
   isScalingEnabled(): boolean {
@@ -181,7 +181,7 @@ export class EditControlManager {
 
   setScalingEnabled(enabled: boolean): void {
     this._scalingEnabled = enabled;
-    console.log(`🔄 Scaling ${enabled ? 'enabled' : 'disabled'}`);
+    console.log(`Scaling ${enabled ? 'enabled' : 'disabled'}`);
   }
 
   isLocalMode(): boolean {
@@ -190,7 +190,7 @@ export class EditControlManager {
 
   setLocalMode(local: boolean): void {
     this._localMode = local;
-    console.log(`🔄 ${local ? 'Local' : 'World'} coordinate mode`);
+    console.log(`${local ? 'Local' : 'World'} coordinate mode`);
   }
 
   isSnapEnabled(): boolean {
@@ -203,7 +203,7 @@ export class EditControlManager {
 
   setTransSnapValue(value: number): void {
     this._transSnapValue = value;
-    console.log(`🔄 Translation snap value: ${value}`);
+    console.log(`Translation snap value: ${value}`);
   }
 
   getRotSnapValue(): number {
@@ -212,7 +212,7 @@ export class EditControlManager {
 
   setRotSnapValue(value: number): void {
     this._rotSnapValue = value;
-    console.log(`🔄 Rotation snap value: ${value} radians`);
+    console.log(`Rotation snap value: ${value} radians`);
   }
 
   getScaleSnapValue(): number {
@@ -221,7 +221,7 @@ export class EditControlManager {
 
   setScaleSnapValue(value: number): void {
     this._scaleSnapValue = value;
-    console.log(`🔄 Scale snap value: ${value}`);
+    console.log(`Scale snap value: ${value}`);
   }
 
   // Record transform state before changes (following EditControl patterns)
@@ -232,7 +232,7 @@ export class EditControlManager {
       scaling: mesh.scaling.clone()
     };
     this.activeTransforms.set(mesh.uniqueId.toString(), state);
-    console.log(`🎯 Started transform for: ${mesh.name}`);
+    console.log(`Started transform for: ${mesh.name}`);
   }
 
   // Complete transform and add to command history (following EditControl patterns)
@@ -251,7 +251,7 @@ export class EditControlManager {
       
       this.commandManager.executeCommand(command);
       this.activeTransforms.delete(mesh.uniqueId.toString());
-      console.log(`✅ Completed transform for: ${mesh.name}`);
+      console.log(`Completed transform for: ${mesh.name}`);
     }
   }
 
@@ -287,7 +287,7 @@ export class EditControlManager {
     };
 
     document.addEventListener('keydown', handleKeyDown);
-    console.log('⌨️ Keyboard shortcuts registered (Ctrl/Cmd+Z for undo, Ctrl/Cmd+Shift+Z for redo)');
+    console.log('Keyboard shortcuts registered (Ctrl/Cmd+Z for undo, Ctrl/Cmd+Shift+Z for redo)');
     
     // Return cleanup function
     return () => {
@@ -298,7 +298,7 @@ export class EditControlManager {
   dispose(): void {
     this.activeTransforms.clear();
     this.commandManager.clear();
-    console.log('🧹 EditControl Manager disposed');
+    console.log('EditControl Manager disposed');
   }
 }
 

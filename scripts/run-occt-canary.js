@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 
-console.log('🚀 OCCT Canary Test Runner');
+console.log('OCCT Canary Test Runner');
 console.log('=' .repeat(50));
 
 let totalTests = 0;
@@ -13,7 +13,7 @@ let failedTests = 0;
 const testResults = [];
 
 function describe(suiteName, testSuite) {
-  console.log(`\n📦 ${suiteName}`);
+  console.log(`\n${suiteName}`);
   testSuite();
 }
 
@@ -24,21 +24,21 @@ function test(testName, testFn) {
     if (result instanceof Promise) {
       return result.then(() => {
         passedTests++;
-        console.log(`  ✅ ${testName}`);
+        console.log(`  ${testName}`);
         testResults.push({ name: testName, status: 'passed' });
       }).catch(error => {
         failedTests++;
-        console.log(`  ❌ ${testName}: ${error.message}`);
+        console.log(`  ${testName}: ${error.message}`);
         testResults.push({ name: testName, status: 'failed', error: error.message });
       });
     } else {
       passedTests++;
-      console.log(`  ✅ ${testName}`);
+      console.log(`  ${testName}`);
       testResults.push({ name: testName, status: 'passed' });
     }
   } catch (error) {
     failedTests++;
-    console.log(`  ❌ ${testName}: ${error.message}`);
+    console.log(`  ${testName}: ${error.message}`);
     testResults.push({ name: testName, status: 'failed', error: error.message });
   }
 }
@@ -102,12 +102,12 @@ global.afterAll = afterAll;
 
 // Simple test validation
 function validateCanaryTest() {
-  console.log('\n🔍 Validating OCCT Canary Test Structure...');
+  console.log('\nValidating OCCT Canary Test Structure...');
   
   const testPath = path.join(__dirname, '../tests/occt-canary.test.ts');
   
   if (!fs.existsSync(testPath)) {
-    console.log('❌ Canary test file not found');
+    console.log('Canary test file not found');
     return false;
   }
   
@@ -115,22 +115,22 @@ function validateCanaryTest() {
   
   // Check for required test categories
   const requiredSections = [
-    '🔧 Worker Initialization',
-    '📦 Basic Geometry Creation', 
-    '🔧 Boolean Operations',
-    '🎯 Tessellation Pipeline',
-    '⚡ Error Handling & Edge Cases',
-    '🚀 Performance & Memory',
-    '🎨 AI Code Patterns'
+    'Worker Initialization',
+    'Basic Geometry Creation', 
+    'Boolean Operations',
+    'Tessellation Pipeline',
+    'Error Handling & Edge Cases',
+    'Performance & Memory',
+    'AI Code Patterns'
   ];
   
   let validSections = 0;
   for (const section of requiredSections) {
     if (testContent.includes(section)) {
-      console.log(`  ✅ Found: ${section}`);
+      console.log(`  Found: ${section}`);
       validSections++;
     } else {
-      console.log(`  ❌ Missing: ${section}`);
+      console.log(`  Missing: ${section}`);
     }
   }
   
@@ -147,27 +147,27 @@ function validateCanaryTest() {
   let validUtilities = 0;
   for (const utility of requiredUtilities) {
     if (testContent.includes(utility)) {
-      console.log(`  ✅ Found utility: ${utility}`);
+      console.log(`  Found utility: ${utility}`);
       validUtilities++;
     } else {
-      console.log(`  ❌ Missing utility: ${utility}`);
+      console.log(`  Missing utility: ${utility}`);
     }
   }
   
   const isValid = validSections === requiredSections.length && 
                   validUtilities === requiredUtilities.length;
   
-  console.log(`\n📊 Validation Results:`);
+  console.log(`\nValidation Results:`);
   console.log(`  Test Sections: ${validSections}/${requiredSections.length}`);
   console.log(`  Test Utilities: ${validUtilities}/${requiredUtilities.length}`);
-  console.log(`  Overall Status: ${isValid ? '✅ VALID' : '❌ INVALID'}`);
+  console.log(`  Overall Status: ${isValid ? 'VALID' : 'INVALID'}`);
   
   return isValid;
 }
 
 // Run basic validation
 async function runCanaryValidation() {
-  console.log('\n🧪 Running OCCT Canary Validation...');
+  console.log('\nRunning OCCT Canary Validation...');
   
   // Test 1: File structure validation
   test('Canary test file structure', () => {
@@ -208,17 +208,17 @@ async function runCanaryValidation() {
     expect(mockMeshData.indices.length % 3).toBe(0);
   });
   
-  console.log('\n📈 Final Results:');
+  console.log('\nFinal Results:');
   console.log(`  Total Tests: ${totalTests}`);
   console.log(`  Passed: ${passedTests}`);
   console.log(`  Failed: ${failedTests}`);
   console.log(`  Success Rate: ${((passedTests/totalTests) * 100).toFixed(1)}%`);
   
   if (failedTests === 0) {
-    console.log('\n🎉 All canary validations passed!');
+    console.log('\nAll canary validations passed!');
     console.log('The OCCT integration pipeline is ready for production.');
   } else {
-    console.log('\n⚠️  Some validations failed. Review the issues above.');
+    console.log('\nSome validations failed. Review the issues above.');
   }
   
   return failedTests === 0;
@@ -229,7 +229,7 @@ if (require.main === module) {
   runCanaryValidation().then(success => {
     process.exit(success ? 0 : 1);
   }).catch(error => {
-    console.error('❌ Canary test runner failed:', error);
+    console.error('Canary test runner failed:', error);
     process.exit(1);
   });
 }

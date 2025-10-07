@@ -96,7 +96,7 @@ const TextureGeneratorDemo: React.FC<TextureGeneratorDemoProps> = ({ scene, sele
     <div className="max-w-4xl mx-auto p-6 space-y-6">
       <div className="bg-sphaire-dark-lighter rounded-lg p-6">
         <h1 className="text-2xl font-bold text-sphaire-pink-light mb-4">
-          🎨 StableMaterials Texture Generator Demo
+          StableMaterials Texture Generator Demo
         </h1>
         <p className="text-gray-300 mb-6">
           Generate professional PBR texture stacks using AI. Create basecolor, normal, roughness, 
@@ -105,7 +105,7 @@ const TextureGeneratorDemo: React.FC<TextureGeneratorDemoProps> = ({ scene, sele
 
         {/* API Token Setup */}
         <div className="mb-6 p-4 bg-sphaire-dark rounded-lg border border-sphaire-purple">
-          <h3 className="text-lg font-semibold text-sphaire-pink-light mb-3">🔑 Setup</h3>
+          <h3 className="text-lg font-semibold text-sphaire-pink-light mb-3">Setup</h3>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-gray-300">Hugging Face API Token:</span>
@@ -152,7 +152,7 @@ const TextureGeneratorDemo: React.FC<TextureGeneratorDemoProps> = ({ scene, sele
         {/* Quick Examples */}
         <div className="mb-6 p-4 bg-sphaire-dark rounded-lg border border-sphaire-purple">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-semibold text-sphaire-pink-light">⚡ Quick Examples</h3>
+            <h3 className="text-lg font-semibold text-sphaire-pink-light">Quick Examples</h3>
             <button
               onClick={generateExampleTextures}
               disabled={isGenerating}
@@ -172,7 +172,7 @@ const TextureGeneratorDemo: React.FC<TextureGeneratorDemoProps> = ({ scene, sele
         {(pbrTextures || simpleTexture) && (
           <div className="mb-6 p-4 bg-sphaire-dark rounded-lg border border-sphaire-purple">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-semibold text-sphaire-pink-light">🎯 Apply to Mesh</h3>
+              <h3 className="text-lg font-semibold text-sphaire-pink-light">Apply to Mesh</h3>
               <button
                 onClick={applyToSelectedMesh}
                 className="px-4 py-2 bg-sphaire-pink text-white rounded hover:bg-sphaire-purple transition-colors"

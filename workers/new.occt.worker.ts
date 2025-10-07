@@ -248,7 +248,7 @@ function createOccWrapper(oc: OpenCascadeInstance) {
     },
     createHelix: (radius: number, pitch: number, height: number, center = [0,0,0]) => {
       try {
-        log(`🔧 Creating helix via cylinder + pcurve method: radius=${radius}, pitch=${pitch}, height=${height}`);
+        log(`Creating helix via cylinder + pcurve method: radius=${radius}, pitch=${pitch}, height=${height}`);
         
         // EXPERT SOLUTION: Use cylinder + parametric curve approach
         // This avoids Handle_Geom_BSplineCurve binding issues entirely
@@ -283,17 +283,17 @@ function createOccWrapper(oc: OpenCascadeInstance) {
         // Step 4: Create wire from the helical edge
         const helixWire = new oc.BRepBuilderAPI_MakeWire_2(helicalEdge).Wire();
         
-        log('✅ Expert helix created successfully via cylinder + pcurve method!');
-        log('🎯 No Handle_Geom_BSplineCurve binding issues - using native OCC geometry');
+        log('Expert helix created successfully via cylinder + pcurve method!');
+        log('No Handle_Geom_BSplineCurve binding issues - using native OCC geometry');
         
         return helixWire;
         
       } catch (primaryError) {
-        log('⚠️ Primary cylinder + pcurve method failed:', primaryError);
+        log('Primary cylinder + pcurve method failed:', primaryError);
         
         // Fallback 1: Try discrete segment approximation
         try {
-          log('🔄 Attempting discrete helix approximation...');
+          log('Attempting discrete helix approximation...');
           
           const turns = height / pitch;
           const segmentsPerTurn = 32; // Higher resolution
@@ -325,11 +325,11 @@ function createOccWrapper(oc: OpenCascadeInstance) {
             wb.Add_1(edge);
           }
           
-          log('✅ Discrete helix approximation created successfully');
+          log('Discrete helix approximation created successfully');
           return wb.Wire();
           
         } catch (fallbackError) {
-          log('❌ Discrete helix fallback also failed:', fallbackError);
+          log('Discrete helix fallback also failed:', fallbackError);
           
           // Fallback 2: Simple vertical line
           const startPnt = new oc.gp_Pnt_3(center[0], center[1], center[2]);
@@ -337,7 +337,7 @@ function createOccWrapper(oc: OpenCascadeInstance) {
           const verticalEdge = new oc.BRepBuilderAPI_MakeEdge_3(startPnt, endPnt).Edge();
           const verticalWire = new oc.BRepBuilderAPI_MakeWire_2(verticalEdge).Wire();
           
-          log('🔄 Using simple vertical line as ultimate fallback');
+          log('Using simple vertical line as ultimate fallback');
           return verticalWire;
         }
       }
@@ -697,7 +697,7 @@ function cleanCode(code: string): string {
       
       // Remove top-level return statements
       if (trimmed.startsWith('return ') || trimmed === 'return;') {
-        log(`🧹 Removed invalid top-level return at line ${index + 1}: ${trimmed}`);
+        log(`Removed invalid top-level return at line ${index + 1}: ${trimmed}`);
         return false;
       }
       
@@ -718,7 +718,7 @@ function cleanCode(code: string): string {
       
       if (shapeVariables.length > 0) {
         const lastShape = shapeVariables[shapeVariables.length - 1];
-        log(`🔧 Auto-adding tessellation for shape: ${lastShape}`);
+        log(`Auto-adding tessellation for shape: ${lastShape}`);
         return cleaned + `\n\n// Auto-tessellate the final shape\nconst tessellated = occ.tessellate(${lastShape});`;
       }
     }
@@ -726,7 +726,7 @@ function cleanCode(code: string): string {
     return cleaned;
     
   } catch (error) {
-    log('⚠️ Code cleaning failed, using original:', error);
+    log('Code cleaning failed, using original:', error);
     return code;
   }
 }
@@ -740,7 +740,7 @@ async function processQueue(): Promise<void> {
     try {
       // Clean the code before execution
       const cleanedCode = cleanCode(code);
-      log(`🧹 Cleaned code length: ${cleanedCode.length} chars`);
+      log(`Cleaned code length: ${cleanedCode.length} chars`);
       
       // Create and execute the function
       const fn = new Function('occ', `'use strict';\n${cleanedCode}`);

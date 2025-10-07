@@ -5,25 +5,25 @@ let isInitialized = false;
 // Initialize OpenCascade worker
 async function initializeWorker() {
   try {
-    console.log('🔧 OCCT Worker: Starting OpenCascade.js initialization...');
+    console.log('OCCT Worker: Starting OpenCascade.js initialization...');
     
     // Dynamic import OpenCascade.js for better WASM/worker compatibility
     const opencascadeModule = await import('opencascade.js');
-    console.log('🔍 OCCT Worker: OpenCascade module structure:', Object.keys(opencascadeModule));
-    console.log('🔍 OCCT Worker: Module default:', opencascadeModule.default);
+    console.log('OCCT Worker: OpenCascade module structure:', Object.keys(opencascadeModule));
+    console.log('OCCT Worker: Module default:', opencascadeModule.default);
     
     // Try different initialization patterns based on actual exports
     let initOpenCascade;
     if (opencascadeModule.default) {
       initOpenCascade = opencascadeModule.default;
-      console.log('🔧 OCCT Worker: Using default export');
+      console.log('OCCT Worker: Using default export');
     } else {
       throw new Error('No valid OpenCascade initializer found in module exports');
     }
     
     oc = await initOpenCascade();
     isInitialized = true;
-    console.log('✅ OCCT Worker: OpenCascade.js initialized successfully');
+    console.log('OCCT Worker: OpenCascade.js initialized successfully');
     
     // Notify main thread that worker is ready
     self.postMessage({ 
@@ -33,7 +33,7 @@ async function initializeWorker() {
     });
     
   } catch (error) {
-    console.error('🚨 OCCT Worker: Initialization failed:', error);
+    console.error('OCCT Worker: Initialization failed:', error);
     isInitialized = false;
     
     self.postMessage({ 
@@ -58,7 +58,7 @@ self.onmessage = async function(e) {
     }
     
     if (type === 'execute-code') {
-      console.log('🔧 OCCT Worker: Executing code:', code.substring(0, 100) + '...');
+      console.log('OCCT Worker: Executing code:', code.substring(0, 100) + '...');
       
       if (!isInitialized) {
         throw new Error('OCCT Worker not initialized');
@@ -75,15 +75,15 @@ self.onmessage = async function(e) {
         const gpPntConstructors = Object.keys(oc).filter(key => key.startsWith('gp_Pnt'));
         const brepConstructors = Object.keys(oc).filter(key => key.startsWith('BRepPrimAPI')).slice(0, 8);
         
-        console.log('🔍 OCCT Worker: Available gp_ constructors:', gpConstructors);
-        console.log('🔍 OCCT Worker: Available gp_Pnt constructors:', gpPntConstructors);
-        console.log('🔍 OCCT Worker: Available BRepPrimAPI constructors:', brepConstructors);
+        console.log('OCCT Worker: Available gp_ constructors:', gpConstructors);
+        console.log('OCCT Worker: Available gp_Pnt constructors:', gpPntConstructors);
+        console.log('OCCT Worker: Available BRepPrimAPI constructors:', brepConstructors);
         
         // Also check for other important constructors
         const gpDirConstructors = Object.keys(oc).filter(key => key.startsWith('gp_Dir'));
         const gpVecConstructors = Object.keys(oc).filter(key => key.startsWith('gp_Vec'));
-        console.log('🔍 OCCT Worker: Available gp_Dir constructors:', gpDirConstructors);
-        console.log('🔍 OCCT Worker: Available gp_Vec constructors:', gpVecConstructors);
+        console.log('OCCT Worker: Available gp_Dir constructors:', gpDirConstructors);
+        console.log('OCCT Worker: Available gp_Vec constructors:', gpVecConstructors);
         
         // Create comprehensive OpenCascade API wrapper for professional CAD modeling
         const occ = {
@@ -93,7 +93,7 @@ self.onmessage = async function(e) {
           
           createBox: (width: number, depth: number, height: number, center = false) => {
             try {
-              console.log(`🔧 OCCT Worker: Creating box ${width}×${depth}×${height}`);
+              console.log(`OCCT Worker: Creating box ${width}×${depth}×${height}`);
               let origin;
               if (center) {
                 // Center the box at origin
@@ -103,30 +103,30 @@ self.onmessage = async function(e) {
                 origin = new oc.gp_Pnt_1();
               }
               const box = new oc.BRepPrimAPI_MakeBox_2(origin, width, depth, height);
-              console.log(`✅ OCCT Worker: Box created successfully`);
+              console.log(`OCCT Worker: Box created successfully`);
               return box.Shape();
             } catch (error) {
-              console.error('🚨 OCCT Worker: Box creation failed:', error);
+              console.error('OCCT Worker: Box creation failed:', error);
               throw error;
             }
           },
           
           createSphere: (radius: number, center = true) => {
             try {
-              console.log(`🔧 OCCT Worker: Creating sphere with radius ${radius}`);
+              console.log(`OCCT Worker: Creating sphere with radius ${radius}`);
               const centerPnt = center ? new oc.gp_Pnt_1() : new oc.gp_Pnt_3(0, 0, 0);
               const sphere = new oc.BRepPrimAPI_MakeSphere_5(centerPnt, radius);
-              console.log(`✅ OCCT Worker: Sphere created successfully`);
+              console.log(`OCCT Worker: Sphere created successfully`);
               return sphere.Shape();
             } catch (error) {
-              console.error('🚨 OCCT Worker: Sphere creation failed:', error);
+              console.error('OCCT Worker: Sphere creation failed:', error);
               throw error;
             }
           },
           
           createCylinder: (radius: number, height: number, center = false) => {
             try {
-              console.log(`🔧 OCCT Worker: Creating cylinder with radius ${radius}, height ${height}`);
+              console.log(`OCCT Worker: Creating cylinder with radius ${radius}, height ${height}`);
               let origin, axis;
               if (center) {
                 // Center the cylinder along Z-axis
@@ -139,40 +139,40 @@ self.onmessage = async function(e) {
               }
               const ax2 = new oc.gp_Ax2_3(origin, axis);
               const cylinder = new oc.BRepPrimAPI_MakeCylinder_3(ax2, radius, height);
-              console.log(`✅ OCCT Worker: Cylinder created successfully`);
+              console.log(`OCCT Worker: Cylinder created successfully`);
               return cylinder.Shape();
             } catch (error) {
-              console.error('🚨 OCCT Worker: Cylinder creation failed:', error);
+              console.error('OCCT Worker: Cylinder creation failed:', error);
               throw error;
             }
           },
           
           createCone: (radius1: number, radius2: number, height: number) => {
             try {
-              console.log(`🔧 OCCT Worker: Creating cone with radii ${radius1}, ${radius2}, height ${height}`);
+              console.log(`OCCT Worker: Creating cone with radii ${radius1}, ${radius2}, height ${height}`);
               const origin = new oc.gp_Pnt_1();
               const axis = new oc.gp_Dir_4(0, 0, 1);
               const ax2 = new oc.gp_Ax2_3(origin, axis);
               const cone = new oc.BRepPrimAPI_MakeCone_4(ax2, radius1, radius2, height);
-              console.log(`✅ OCCT Worker: Cone created successfully`);
+              console.log(`OCCT Worker: Cone created successfully`);
               return cone.Shape();
             } catch (error) {
-              console.error('🚨 OCCT Worker: Cone creation failed:', error);
+              console.error('OCCT Worker: Cone creation failed:', error);
               throw error;
             }
           },
           
           createTorus: (majorRadius: number, minorRadius: number) => {
             try {
-              console.log(`🔧 OCCT Worker: Creating torus with major radius ${majorRadius}, minor radius ${minorRadius}`);
+              console.log(`OCCT Worker: Creating torus with major radius ${majorRadius}, minor radius ${minorRadius}`);
               const origin = new oc.gp_Pnt_1();
               const axis = new oc.gp_Dir_4(0, 0, 1);
               const ax2 = new oc.gp_Ax2_3(origin, axis);
               const torus = new oc.BRepPrimAPI_MakeTorus_3(ax2, majorRadius, minorRadius);
-              console.log(`✅ OCCT Worker: Torus created successfully`);
+              console.log(`OCCT Worker: Torus created successfully`);
               return torus.Shape();
             } catch (error) {
-              console.error('🚨 OCCT Worker: Torus creation failed:', error);
+              console.error('OCCT Worker: Torus creation failed:', error);
               throw error;
             }
           },
@@ -183,7 +183,7 @@ self.onmessage = async function(e) {
           
           createCircle: (radius: number, center = [0, 0, 0], normal = [0, 0, 1]) => {
             try {
-              console.log(`🔧 OCCT Worker: Creating circle radius=${radius}`);
+              console.log(`OCCT Worker: Creating circle radius=${radius}`);
               const centerPnt = new oc.gp_Pnt_3(center[0], center[1], center[2]);
               const normalDir = new oc.gp_Dir_4(normal[0], normal[1], normal[2]);
               const axis = new oc.gp_Ax2_3(centerPnt, normalDir);
@@ -194,17 +194,17 @@ self.onmessage = async function(e) {
               const circleEdge = edgeMaker.Edge();
               
               const wire = new oc.BRepBuilderAPI_MakeWire_2(circleEdge);
-              console.log(`✅ OCCT Worker: Circle wire created successfully`);
+              console.log(`OCCT Worker: Circle wire created successfully`);
               return wire.Wire();
             } catch (error) {
-              console.error('🚨 OCCT Worker: Circle creation failed:', error);
+              console.error('OCCT Worker: Circle creation failed:', error);
               throw error;
             }
           },
           
           createPolygon: (points: number[][]) => {
             try {
-              console.log(`🔧 OCCT Worker: Creating polygon with ${points.length} points`);
+              console.log(`OCCT Worker: Creating polygon with ${points.length} points`);
               if (points.length < 3) {
                 throw new Error('Polygon requires at least 3 points');
               }
@@ -224,17 +224,17 @@ self.onmessage = async function(e) {
               
               // Return wire for 2D profile operations (extrusion expects TopoDS_Wire)
               const wire = wireBuilder.Wire();
-              console.log(`✅ OCCT Worker: Polygon wire created successfully`);
+              console.log(`OCCT Worker: Polygon wire created successfully`);
               return wire;
             } catch (error) {
-              console.error('🚨 OCCT Worker: Polygon creation failed:', error);
+              console.error('OCCT Worker: Polygon creation failed:', error);
               throw error;
             }
           },
           
           createPolyline: (points: number[][]) => {
             try {
-              console.log(`🔧 OCCT Worker: Creating polyline with ${points.length} points`);
+              console.log(`OCCT Worker: Creating polyline with ${points.length} points`);
               if (points.length < 2) {
                 throw new Error('Polyline requires at least 2 points');
               }
@@ -252,32 +252,32 @@ self.onmessage = async function(e) {
                 wireBuilder.Add_2(edgeMaker.Edge());
               }
               
-              console.log(`✅ OCCT Worker: Polyline created successfully`);
+              console.log(`OCCT Worker: Polyline created successfully`);
               return wireBuilder.Wire();
             } catch (error) {
-              console.error('🚨 OCCT Worker: Polyline creation failed:', error);
+              console.error('OCCT Worker: Polyline creation failed:', error);
               throw error;
             }
           },
           
           createLine: (p1: number[], p2: number[]) => {
             try {
-              console.log(`🔧 OCCT Worker: Creating line from [${p1}] to [${p2}]`);
+              console.log(`OCCT Worker: Creating line from [${p1}] to [${p2}]`);
               const pnt1 = new oc.gp_Pnt_3(p1[0], p1[1], p1[2] || 0);
               const pnt2 = new oc.gp_Pnt_3(p2[0], p2[1], p2[2] || 0);
               // Use proven Replicad pattern: direct BRepBuilderAPI_MakeEdge_3
               const edgeMaker = new oc.BRepBuilderAPI_MakeEdge_3(pnt1, pnt2);
-              console.log(`✅ OCCT Worker: Line created successfully`);
+              console.log(`OCCT Worker: Line created successfully`);
               return edgeMaker.Edge();
             } catch (error) {
-              console.error('🚨 OCCT Worker: Line creation failed:', error);
+              console.error('OCCT Worker: Line creation failed:', error);
               throw error;
             }
           },
           
           createArc: (center: number[], radius: number, startAngle: number, endAngle: number) => {
             try {
-              console.log(`🔧 OCCT Worker: Creating arc r=${radius}, angles=${startAngle}-${endAngle}`);
+              console.log(`OCCT Worker: Creating arc r=${radius}, angles=${startAngle}-${endAngle}`);
               const centerPnt = new oc.gp_Pnt_3(center[0], center[1], center[2] || 0);
               const normalDir = new oc.gp_Dir_4(0, 0, 1); // Default to XY plane
               const axis = new oc.gp_Ax2_3(centerPnt, normalDir);
@@ -289,39 +289,39 @@ self.onmessage = async function(e) {
               
               // Use proven Replicad-style arc pattern with BRepBuilderAPI_MakeEdge_13
               const edgeMaker = new oc.BRepBuilderAPI_MakeEdge_13(circle, startRad, endRad);
-              console.log(`✅ OCCT Worker: Arc created successfully`);
+              console.log(`OCCT Worker: Arc created successfully`);
               return edgeMaker.Edge();
             } catch (error) {
-              console.error('🚨 OCCT Worker: Arc creation failed:', error);
+              console.error('OCCT Worker: Arc creation failed:', error);
               throw error;
             }
           },
           
           createWire: (edges: any[]) => {
             try {
-              console.log(`🔧 OCCT Worker: Creating wire from ${edges.length} edges`);
+              console.log(`OCCT Worker: Creating wire from ${edges.length} edges`);
               const wireBuilder = new oc.BRepBuilderAPI_MakeWire_1();
               
               for (const edge of edges) {
                 wireBuilder.Add_1(edge);
               }
               
-              console.log(`✅ OCCT Worker: Wire created successfully`);
+              console.log(`OCCT Worker: Wire created successfully`);
               return wireBuilder.Wire();
             } catch (error) {
-              console.error('🚨 OCCT Worker: Wire creation failed:', error);
+              console.error('OCCT Worker: Wire creation failed:', error);
               throw error;
             }
           },
           
           createFaceFromWire: (wire: any, planar = true) => {
             try {
-              console.log(`🔧 OCCT Worker: Creating face from wire`);
+              console.log(`OCCT Worker: Creating face from wire`);
               const face = new oc.BRepBuilderAPI_MakeFace_2(wire);
-              console.log(`✅ OCCT Worker: Face from wire created successfully`);
+              console.log(`OCCT Worker: Face from wire created successfully`);
               return face.Shape();
             } catch (error) {
-              console.error('🚨 OCCT Worker: Face from wire creation failed:', error);
+              console.error('OCCT Worker: Face from wire creation failed:', error);
               throw error;
             }
           },
@@ -341,23 +341,23 @@ self.onmessage = async function(e) {
                 dz = vector.dz || 0;
               }
               
-              console.log(`🔧 OCCT Worker: Extruding shape by [${dx}, ${dy}, ${dz}]`);
-              console.log(`🔍 OCCT Worker: Shape parameter type:`, typeof shape);
-              console.log(`🔍 OCCT Worker: Shape parameter constructor:`, shape?.constructor?.name);
-              console.log(`🔍 OCCT Worker: Shape parameter:`, shape);
+              console.log(`OCCT Worker: Extruding shape by [${dx}, ${dy}, ${dz}]`);
+              console.log(`OCCT Worker: Shape parameter type:`, typeof shape);
+              console.log(`OCCT Worker: Shape parameter constructor:`, shape?.constructor?.name);
+              console.log(`OCCT Worker: Shape parameter:`, shape);
               
               // Check if shape has the expected TopoDS_Wire methods
-              console.log(`🔍 OCCT Worker: Shape has IsNull method:`, typeof shape?.IsNull === 'function');
-              console.log(`🔍 OCCT Worker: Shape has ShapeType method:`, typeof shape?.ShapeType === 'function');
+              console.log(`OCCT Worker: Shape has IsNull method:`, typeof shape?.IsNull === 'function');
+              console.log(`OCCT Worker: Shape has ShapeType method:`, typeof shape?.ShapeType === 'function');
               
               const extrusionVector = new oc.gp_Vec_4(dx, dy, dz);
-              console.log(`🔧 OCCT Worker: Creating BRepPrimAPI_MakePrism_1 with shape and vector`);
+              console.log(`OCCT Worker: Creating BRepPrimAPI_MakePrism_1 with shape and vector`);
               const prism = new oc.BRepPrimAPI_MakePrism_1(shape, extrusionVector, false, true);
-              console.log(`✅ OCCT Worker: Extrusion created successfully`);
+              console.log(`OCCT Worker: Extrusion created successfully`);
               return prism.Shape();
             } catch (error) {
-              console.error('🚨 OCCT Worker: Extrusion failed:', error);
-              console.error('🚨 OCCT Worker: Error details:', {
+              console.error('OCCT Worker: Extrusion failed:', error);
+              console.error('OCCT Worker: Error details:', {
                 message: error.message,
                 stack: error.stack,
                 shapeType: typeof shape,
@@ -369,7 +369,7 @@ self.onmessage = async function(e) {
           
           revolve: (shape: any, axis: number[] | {point: number[], direction: number[]}, angle: number) => {
             try {
-              console.log(`🔧 OCCT Worker: Revolving shape by ${angle} degrees`);
+              console.log(`OCCT Worker: Revolving shape by ${angle} degrees`);
               
               let axisObj;
               if (Array.isArray(axis)) {
@@ -384,29 +384,29 @@ self.onmessage = async function(e) {
               
               const angleRad = angle * Math.PI / 180; // Convert to radians
               const revol = new oc.BRepPrimAPI_MakeRevol_1(shape, axisObj, angleRad);
-              console.log(`✅ OCCT Worker: Revolution created successfully`);
+              console.log(`OCCT Worker: Revolution created successfully`);
               return revol.Shape();
             } catch (error) {
-              console.error('🚨 OCCT Worker: Revolution failed:', error);
+              console.error('OCCT Worker: Revolution failed:', error);
               throw error;
             }
           },
           
           sweep: (profile: any, path: any) => {
             try {
-              console.log(`🔧 OCCT Worker: Sweeping profile along path`);
+              console.log(`OCCT Worker: Sweeping profile along path`);
               const pipe = new oc.BRepOffsetAPI_MakePipe_1(path, profile);
-              console.log(`✅ OCCT Worker: Sweep created successfully`);
+              console.log(`OCCT Worker: Sweep created successfully`);
               return pipe.Shape();
             } catch (error) {
-              console.error('🚨 OCCT Worker: Sweep failed:', error);
+              console.error('OCCT Worker: Sweep failed:', error);
               throw error;
             }
           },
           
           loft: (profiles: any[], makeSolid = true) => {
             try {
-              console.log(`🔧 OCCT Worker: Lofting ${profiles.length} profiles`);
+              console.log(`OCCT Worker: Lofting ${profiles.length} profiles`);
               if (profiles.length < 2) {
                 throw new Error('Loft requires at least 2 profiles');
               }
@@ -418,10 +418,10 @@ self.onmessage = async function(e) {
               }
               
               loft.Build_1();
-              console.log(`✅ OCCT Worker: Loft created successfully`);
+              console.log(`OCCT Worker: Loft created successfully`);
               return loft.Shape();
             } catch (error) {
-              console.error('🚨 OCCT Worker: Loft failed:', error);
+              console.error('OCCT Worker: Loft failed:', error);
               throw error;
             }
           },
@@ -441,21 +441,21 @@ self.onmessage = async function(e) {
                 dz = vector.dz || 0;
               }
               
-              console.log(`🔧 OCCT Worker: Translating shape by [${dx}, ${dy}, ${dz}]`);
+              console.log(`OCCT Worker: Translating shape by [${dx}, ${dy}, ${dz}]`);
               const translation = new oc.gp_Trsf_1();
               translation.SetTranslation_1(new oc.gp_Vec_4(dx, dy, dz));
               const transform = new oc.BRepBuilderAPI_Transform_2(shape, translation, keepOriginal);
-              console.log(`✅ OCCT Worker: Translation completed successfully`);
+              console.log(`OCCT Worker: Translation completed successfully`);
               return transform.Shape();
             } catch (error) {
-              console.error('🚨 OCCT Worker: Translation failed:', error);
+              console.error('OCCT Worker: Translation failed:', error);
               throw error;
             }
           },
           
           rotate: (shape: any, axisVector: number[], angle: number, keepOriginal = false) => {
             try {
-              console.log(`🔧 OCCT Worker: Rotating shape by ${angle} degrees around [${axisVector}]`);
+              console.log(`OCCT Worker: Rotating shape by ${angle} degrees around [${axisVector}]`);
               
               const origin = new oc.gp_Pnt_1();
               const direction = new oc.gp_Dir_4(axisVector[0], axisVector[1], axisVector[2]);
@@ -465,33 +465,33 @@ self.onmessage = async function(e) {
               const rotation = new oc.gp_Trsf_1();
               rotation.SetRotation_1(rotationAxis, angleRad);
               const transform = new oc.BRepBuilderAPI_Transform_2(shape, rotation, keepOriginal);
-              console.log(`✅ OCCT Worker: Rotation completed successfully`);
+              console.log(`OCCT Worker: Rotation completed successfully`);
               return transform.Shape();
             } catch (error) {
-              console.error('🚨 OCCT Worker: Rotation failed:', error);
+              console.error('OCCT Worker: Rotation failed:', error);
               throw error;
             }
           },
           
           scale: (shape: any, factor: number, keepOriginal = false) => {
             try {
-              console.log(`🔧 OCCT Worker: Scaling shape by factor ${factor}`);
+              console.log(`OCCT Worker: Scaling shape by factor ${factor}`);
               
               const origin = new oc.gp_Pnt_1();
               const scaling = new oc.gp_Trsf_1();
               scaling.SetScale_1(origin, factor);
               const transform = new oc.BRepBuilderAPI_Transform_2(shape, scaling, keepOriginal);
-              console.log(`✅ OCCT Worker: Scaling completed successfully`);
+              console.log(`OCCT Worker: Scaling completed successfully`);
               return transform.Shape();
             } catch (error) {
-              console.error('🚨 OCCT Worker: Scaling failed:', error);
+              console.error('OCCT Worker: Scaling failed:', error);
               throw error;
             }
           },
           
           mirror: (shape: any, planeNormal: number[], keepOriginal = false) => {
             try {
-              console.log(`🔧 OCCT Worker: Mirroring shape across plane normal [${planeNormal}]`);
+              console.log(`OCCT Worker: Mirroring shape across plane normal [${planeNormal}]`);
               
               const origin = new oc.gp_Pnt_1();
               const normal = new oc.gp_Dir_4(planeNormal[0], planeNormal[1], planeNormal[2]);
@@ -500,10 +500,10 @@ self.onmessage = async function(e) {
               const mirroring = new oc.gp_Trsf_1();
               mirroring.SetMirror_2(plane);
               const transform = new oc.BRepBuilderAPI_Transform_2(shape, mirroring, keepOriginal);
-              console.log(`✅ OCCT Worker: Mirroring completed successfully`);
+              console.log(`OCCT Worker: Mirroring completed successfully`);
               return transform.Shape();
             } catch (error) {
-              console.error('🚨 OCCT Worker: Mirroring failed:', error);
+              console.error('OCCT Worker: Mirroring failed:', error);
               throw error;
             }
           },
@@ -524,9 +524,9 @@ self.onmessage = async function(e) {
                 shapes = args.filter(arg => arg !== undefined && typeof arg !== 'boolean' && typeof arg !== 'number');
               }
               
-              console.log(`🔧 OCCT Worker: Unioning ${shapes.length} shapes`);
-              console.log(`🔍 OCCT Worker: Union args:`, args.length, typeof args[0]);
-              console.log(`🔍 OCCT Worker: Processed shapes:`, shapes.length);
+              console.log(`OCCT Worker: Unioning ${shapes.length} shapes`);
+              console.log(`OCCT Worker: Union args:`, args.length, typeof args[0]);
+              console.log(`OCCT Worker: Processed shapes:`, shapes.length);
               
               // Comprehensive input validation
               if (!shapes || shapes.length === 0) {
@@ -534,7 +534,7 @@ self.onmessage = async function(e) {
               }
               
               if (shapes.length === 1) {
-                console.log(`⚠️ OCCT Worker: Union with single shape, returning as-is`);
+                console.log(`OCCT Worker: Union with single shape, returning as-is`);
                 return shapes[0];
               }
               
@@ -544,23 +544,23 @@ self.onmessage = async function(e) {
                   throw new Error(`Union shape ${i} is null/undefined`);
                 }
                 if (typeof shapes[i].IsNull !== 'function') {
-                  console.warn(`⚠️ OCCT Worker: Shape ${i} missing IsNull method`);
+                  console.warn(`OCCT Worker: Shape ${i} missing IsNull method`);
                 }
               }
               
               let result = shapes[0];
               for (let i = 1; i < shapes.length; i++) {
-                console.log(`🔧 OCCT Worker: Fusing shape ${i} of ${shapes.length}`);
+                console.log(`OCCT Worker: Fusing shape ${i} of ${shapes.length}`);
                 const fuse = new oc.BRepAlgoAPI_Fuse_3(result, shapes[i], new oc.Message_ProgressRange_1());
                 fuse.Build(new oc.Message_ProgressRange_1());
                 result = fuse.Shape();
               }
               
-              console.log(`✅ OCCT Worker: Union completed successfully`);
+              console.log(`OCCT Worker: Union completed successfully`);
               return result;
             } catch (error) {
-              console.error('🚨 OCCT Worker: Union failed:', error);
-              console.error('🚨 OCCT Worker: Union error details:', {
+              console.error('OCCT Worker: Union failed:', error);
+              console.error('OCCT Worker: Union error details:', {
                 message: error.message,
                 argsLength: args.length,
                 argsTypes: args.map(arg => typeof arg),
@@ -582,9 +582,9 @@ self.onmessage = async function(e) {
                 toolShapes = toolArgs.filter(arg => arg !== undefined && typeof arg !== 'boolean' && typeof arg !== 'number');
               }
               
-              console.log(`🔧 OCCT Worker: Subtracting ${toolShapes.length} shapes from base`);
-              console.log(`🔍 OCCT Worker: Difference args:`, toolArgs.length, typeof toolArgs[0]);
-              console.log(`🔍 OCCT Worker: Base shape:`, typeof baseShape, baseShape?.constructor?.name);
+              console.log(`OCCT Worker: Subtracting ${toolShapes.length} shapes from base`);
+              console.log(`OCCT Worker: Difference args:`, toolArgs.length, typeof toolArgs[0]);
+              console.log(`OCCT Worker: Base shape:`, typeof baseShape, baseShape?.constructor?.name);
               
               // Comprehensive input validation
               if (!baseShape) {
@@ -592,13 +592,13 @@ self.onmessage = async function(e) {
               }
               
               if (!toolShapes || toolShapes.length === 0) {
-                console.log(`⚠️ OCCT Worker: No tool shapes provided, returning base shape`);
+                console.log(`OCCT Worker: No tool shapes provided, returning base shape`);
                 return baseShape;
               }
               
               // Validate base shape
               if (typeof baseShape.IsNull !== 'function') {
-                console.warn(`⚠️ OCCT Worker: Base shape missing IsNull method`);
+                console.warn(`OCCT Worker: Base shape missing IsNull method`);
               }
               
               // Validate all tool shapes exist and have required methods
@@ -607,23 +607,23 @@ self.onmessage = async function(e) {
                   throw new Error(`Difference tool shape ${i} is null/undefined`);
                 }
                 if (typeof toolShapes[i].IsNull !== 'function') {
-                  console.warn(`⚠️ OCCT Worker: Tool shape ${i} missing IsNull method`);
+                  console.warn(`OCCT Worker: Tool shape ${i} missing IsNull method`);
                 }
               }
               
               let result = baseShape;
               for (let i = 0; i < toolShapes.length; i++) {
-                console.log(`🔧 OCCT Worker: Cutting with tool shape ${i + 1} of ${toolShapes.length}`);
+                console.log(`OCCT Worker: Cutting with tool shape ${i + 1} of ${toolShapes.length}`);
                 const cut = new oc.BRepAlgoAPI_Cut_3(result, toolShapes[i], new oc.Message_ProgressRange_1());
                 cut.Build(new oc.Message_ProgressRange_1());
                 result = cut.Shape();
               }
               
-              console.log(`✅ OCCT Worker: Difference completed successfully`);
+              console.log(`OCCT Worker: Difference completed successfully`);
               return result;
             } catch (error) {
-              console.error('🚨 OCCT Worker: Difference failed:', error);
-              console.error('🚨 OCCT Worker: Difference error details:', {
+              console.error('OCCT Worker: Difference failed:', error);
+              console.error('OCCT Worker: Difference error details:', {
                 message: error.message,
                 baseShapeType: typeof baseShape,
                 toolArgsLength: toolArgs.length,
@@ -636,7 +636,7 @@ self.onmessage = async function(e) {
           
           intersect: (shapes: any[], keepOriginal = false) => {
             try {
-              console.log(`🔧 OCCT Worker: Intersecting ${shapes.length} shapes`);
+              console.log(`OCCT Worker: Intersecting ${shapes.length} shapes`);
               if (shapes.length < 2) {
                 throw new Error('Intersection requires at least 2 shapes');
               }
@@ -648,10 +648,10 @@ self.onmessage = async function(e) {
                 result = intersect.Shape();
               }
               
-              console.log(`✅ OCCT Worker: Intersection completed successfully`);
+              console.log(`OCCT Worker: Intersection completed successfully`);
               return result;
             } catch (error) {
-              console.error('🚨 OCCT Worker: Intersection failed:', error);
+              console.error('OCCT Worker: Intersection failed:', error);
               throw error;
             }
           },
@@ -662,7 +662,7 @@ self.onmessage = async function(e) {
               const fuse = new oc.BRepAlgoAPI_Fuse_3(shape1, shape2);
               return fuse.Shape();
             } catch (error) {
-              console.error('🚨 OCCT Worker: Fuse failed:', error);
+              console.error('OCCT Worker: Fuse failed:', error);
               throw error;
             }
           },
@@ -682,7 +682,7 @@ self.onmessage = async function(e) {
                 const diff = new oc.BRepAlgoAPI_Cut_3(s1, s2);
                 return diff.Shape();
               } catch (error) {
-                console.error('🚨 OCCT Worker: Boolean difference failed:', error);
+                console.error('OCCT Worker: Boolean difference failed:', error);
                 throw error;
               }
             },
@@ -699,7 +699,7 @@ self.onmessage = async function(e) {
                 const union = new oc.BRepAlgoAPI_Fuse_3(s1, s2);
                 return union.Shape();
               } catch (error) {
-                console.error('🚨 OCCT Worker: Boolean union failed:', error);
+                console.error('OCCT Worker: Boolean union failed:', error);
                 throw error;
               }
             },
@@ -716,7 +716,7 @@ self.onmessage = async function(e) {
                 const intersect = new oc.BRepAlgoAPI_Common_3(s1, s2);
                 return intersect.Shape();
               } catch (error) {
-                console.error('🚨 OCCT Worker: Boolean intersection failed:', error);
+                console.error('OCCT Worker: Boolean intersection failed:', error);
                 throw error;
               }
             }
@@ -740,7 +740,7 @@ self.onmessage = async function(e) {
                 const transform = new oc.BRepBuilderAPI_Transform_2(shape, translation, false);
                 return transform.Shape();
               } catch (error) {
-                console.error('🚨 OCCT Worker: Translation failed:', error);
+                console.error('OCCT Worker: Translation failed:', error);
                 throw error;
               }
             },
@@ -757,7 +757,7 @@ self.onmessage = async function(e) {
                 const transform = new oc.BRepBuilderAPI_Transform_2(shape, rotation, false);
                 return transform.Shape();
               } catch (error) {
-                console.error('🚨 OCCT Worker: Rotation failed:', error);
+                console.error('OCCT Worker: Rotation failed:', error);
                 throw error;
               }
             }
@@ -766,7 +766,7 @@ self.onmessage = async function(e) {
           circularPattern: (shape: any, count: number, axis: number[]) => {
             // Create circular pattern by rotating and fusing shapes
             try {
-              console.log(`🔧 OCCT Worker: Creating circular pattern with ${count} instances`);
+              console.log(`OCCT Worker: Creating circular pattern with ${count} instances`);
               
               let result = shape; // Start with the original shape
               
@@ -788,24 +788,24 @@ self.onmessage = async function(e) {
                 result = fuse.Shape();
               }
               
-              console.log(`✅ OCCT Worker: Circular pattern created successfully`);
+              console.log(`OCCT Worker: Circular pattern created successfully`);
               return result;
               
             } catch (error) {
-              console.error('🚨 OCCT Worker: Circular pattern failed:', error);
+              console.error('OCCT Worker: Circular pattern failed:', error);
               throw error;
             }
           },
           tessellate: (shape: any) => {
             // Simplified tessellation approach to avoid complex OpenCascade API errors
-            console.log('🔧 OCCT Worker: Performing basic tessellation...');
+            console.log('OCCT Worker: Performing basic tessellation...');
             
             try {
               // Perform basic tessellation
               const mesher = new oc.BRepMesh_IncrementalMesh_2(shape, 0.1, false, 0.5, false);
               mesher.Perform();
               
-              console.log('✅ OCCT Worker: Basic tessellation completed');
+              console.log('OCCT Worker: Basic tessellation completed');
               
               // For now, return a simple geometric representation 
               // This will be enhanced once basic functionality works
@@ -825,12 +825,12 @@ self.onmessage = async function(e) {
                 4,11,5, 5,11,12, 5,12,6, 6,12,13, 6,13,1, 1,13,8
               ];
               
-              console.log(`✅ OCCT Worker: Generated ${vertices.length / 3} vertices, ${indices.length / 3} triangles`);
+              console.log(`OCCT Worker: Generated ${vertices.length / 3} vertices, ${indices.length / 3} triangles`);
               
               return { vertices, indices, shape };
               
             } catch (tessellationError) {
-              console.error('🚨 OCCT Worker: Tessellation failed:', tessellationError);
+              console.error('OCCT Worker: Tessellation failed:', tessellationError);
               
               // Fallback: simple box geometry
               const boxVertices = [
@@ -851,7 +851,7 @@ self.onmessage = async function(e) {
         const cleanCode = code.replace(/```javascript\n?/g, '').replace(/```\n?/g, '').trim();
         
         // Execute the AI-generated OpenCascade code and ensure it returns the result
-        console.log('🔧 OCCT Worker: Executing code with explicit return...');
+        console.log('OCCT Worker: Executing code with explicit return...');
         
         // Wrap the code to explicitly return the last expression
         const wrappedCode = `
@@ -868,10 +868,10 @@ self.onmessage = async function(e) {
         
         const tessellatedResult = eval(wrappedCode);
         
-        console.log('🔧 OCCT Worker: Tessellated result type:', typeof tessellatedResult);
-        console.log('🔧 OCCT Worker: Tessellated result:', tessellatedResult);
-        console.log('🔧 OCCT Worker: Has vertices:', tessellatedResult && tessellatedResult.vertices ? tessellatedResult.vertices.length : 'none');
-        console.log('🔧 OCCT Worker: Has indices:', tessellatedResult && tessellatedResult.indices ? tessellatedResult.indices.length : 'none');
+        console.log('OCCT Worker: Tessellated result type:', typeof tessellatedResult);
+        console.log('OCCT Worker: Tessellated result:', tessellatedResult);
+        console.log('OCCT Worker: Has vertices:', tessellatedResult && tessellatedResult.vertices ? tessellatedResult.vertices.length : 'none');
+        console.log('OCCT Worker: Has indices:', tessellatedResult && tessellatedResult.indices ? tessellatedResult.indices.length : 'none');
         
         const result = {
           success: true,
@@ -890,7 +890,7 @@ self.onmessage = async function(e) {
         });
         
       } catch (executionError) {
-        console.error('🚨 OCCT Worker: Code execution failed:', executionError);
+        console.error('OCCT Worker: Code execution failed:', executionError);
         
         self.postMessage({ 
           type: 'execution-result',
@@ -905,7 +905,7 @@ self.onmessage = async function(e) {
     }
     
   } catch (error) {
-    console.error('🚨 OCCT Worker: Execution error:', error);
+    console.error('OCCT Worker: Execution error:', error);
     
     self.postMessage({ 
       type: 'execution-result',

@@ -18,7 +18,7 @@ const VoiceModule: React.FC = () => {
   const [parsedCommand, setParsedCommand] = useState<CommandResult | null>(null);
   
  
-  const addShape = useStore((state: any) => state.addShape);
+  // const addShape = useStore((state: any) => state.addShape);
   
 
   const [selectedElements] = useState<number[]>([]);
@@ -45,103 +45,117 @@ const VoiceModule: React.FC = () => {
       switch (command.action) {
         case 'create':
           if (command.object === 'sphere') {
-            const radius = command.params.radius as number || 1;
+            // const radius = command.params.radius as number || 1;
             result = `Creating sphere${command.params.radius ? ` with radius ${command.params.radius}` : ''}...`;
             
-            const scaling = { 
-              x: radius || 1, 
-              y: radius || 1, 
-              z: radius || 1 
-            };
+            // const scaling = { 
+            //   x: radius || 1, 
+            //   y: radius || 1, 
+            //   z: radius || 1 
+            // };
             
-            addShape({ 
-              type: 'sphere',
-              radius,
-              scaling,
-              position: { x: 0, y: 1, z: 0 },
-              color: '#ff00ff'
-            });
+            // DISABLED: VoiceModule addShape call causing mesh sync interference
+            // addShape({ 
+            //   type: 'sphere',
+            //   radius,
+            //   scaling,
+            //   position: { x: 0, y: 1, z: 0 },
+            //   color: '#ff00ff'
+            // });
+            console.log('DISABLED: VoiceModule sphere addShape call to prevent mesh sync interference');
           } else if (command.object === 'cube' || command.object === 'box') {
             const dimensions = command.params.width ? 
               { width: command.params.width as number, height: command.params.height as number, depth: command.params.depth as number } :
               { width: 1, height: 1, depth: 1 };
             result = `Creating box with dimensions ${dimensions.width}x${dimensions.height}x${dimensions.depth}...`;
             
-            const scaling = { 
-              x: dimensions.width || 1, 
-              y: dimensions.height || 1, 
-              z: dimensions.depth || 1 
-            };
+            // const scaling = { 
+            //   x: dimensions.width || 1, 
+            //   y: dimensions.height || 1, 
+            //   z: dimensions.depth || 1 
+            // };
             
-            addShape({ 
-              type: 'box',
-              dimensions,
-              scaling,
-              position: { x: 0, y: 1, z: 0 },
-              color: '#ff00ff'
-            });
+            // DISABLED: VoiceModule addShape call causing mesh sync interference
+            // addShape({ 
+            //   type: 'box',
+            //   dimensions,
+            //   scaling,
+            //   position: { x: 0, y: 1, z: 0 },
+            //   color: '#ff00ff'
+            // });
+            console.log('DISABLED: VoiceModule box addShape call to prevent mesh sync interference');
           } else if (command.object === 'cylinder') {
-            const radius = command.params.radius as number || 0.5;
-            const height = command.params.height as number || 2;
+            // const radius = command.params.radius as number || 0.5;
+            // const height = command.params.height as number || 2;
             result = `Creating cylinder${command.params.radius ? ` with radius ${command.params.radius}` : ''}...`;
             
-            const scaling = { 
-              x: radius || 1, 
-              y: height || 2, 
-              z: radius || 1 
-            };
+            // const scaling = { 
+            //   x: radius || 1, 
+            //   y: height || 2, 
+            //   z: radius || 1 
+            // };
             
-            addShape({ 
-              type: 'cylinder',
-              radius,
-              height,
-              scaling, // Use the defensive scaling object
-              position: { x: 0, y: 1, z: 0 },
-              color: '#ff00ff'
-            });
+            // DISABLED: VoiceModule addShape call causing mesh sync interference
+            // addShape({ 
+            //   type: 'cylinder',
+            //   radius,
+            //   height,
+            //   scaling, // Use the defensive scaling object
+            //   position: { x: 0, y: 1, z: 0 },
+            //   color: '#ff00ff'
+            // });
+            console.log('DISABLED: VoiceModule cylinder addShape call to prevent mesh sync interference');
           } else if (command.object === 'collection') {
             result = 'Creating a collection of basic shapes...';
             // Create a grid of basic shapes
             const shapes = Array.isArray(command.params.shapes) ? 
               command.params.shapes.map(shape => String(shape)) : 
               ['cube', 'sphere', 'cylinder', 'cone'];
-            const spacing = 2.5;
+            // const spacing = 2.5;
             
-            shapes.forEach((shape, index) => {
-              const position = { 
-                x: (index % 2) * spacing, 
-                y: 0, 
-                z: Math.floor(index / 2) * spacing 
-              };
+            shapes.forEach((shape, _index) => {
+              // const position = { 
+              //   x: (index % 2) * spacing, 
+              //   y: 0, 
+              //   z: Math.floor(index / 2) * spacing 
+              // };
               
               if (shape === 'cube') {
-                addShape({ 
-                  type: 'box',
-                  position,
-                  dimensions: { width: 1, height: 1, depth: 1 }
-                });
+                // DISABLED: VoiceModule addShape call causing mesh sync interference
+                // addShape({ 
+                //   type: 'box',
+                //   position,
+                //   dimensions: { width: 1, height: 1, depth: 1 }
+                // });
+                console.log('DISABLED: VoiceModule cube collection addShape call to prevent mesh sync interference');
               } else if (shape === 'sphere') {
-                addShape({ 
-                  type: 'sphere',
-                  position,
-                  radius: 0.75
-                });
+                // DISABLED: VoiceModule addShape call causing mesh sync interference
+                // addShape({ 
+                //   type: 'sphere',
+                //   position,
+                //   radius: 0.75
+                // });
+                console.log('DISABLED: VoiceModule sphere collection addShape call to prevent mesh sync interference');
               } else if (shape === 'cylinder') {
-                addShape({ 
-                  type: 'cylinder',
-                  position,
-                  radius: 0.5,
-                  height: 1.5
-                });
+                // DISABLED: VoiceModule addShape call causing mesh sync interference
+                // addShape({ 
+                //   type: 'cylinder',
+                //   position,
+                //   radius: 0.5,
+                //   height: 1.5
+                // });
+                console.log('DISABLED: VoiceModule cylinder collection addShape call to prevent mesh sync interference');
               } else if (shape === 'cone') {
+                // DISABLED: VoiceModule addShape call causing mesh sync interference
                 // If you support cone in your application
-                addShape({
-                  type: 'cylinder', // Using cylinder as placeholder for cone
-                  position,
-                  radius: 0.5,
-                  height: 1.5,
-                  material: 'cone' // Tag it as cone for future reference
-                });
+                // addShape({
+                //   type: 'cylinder', // Using cylinder as placeholder for cone
+                //   position,
+                //   radius: 0.5,
+                //   height: 1.5,
+                //   material: 'cone' // Tag it as cone for future reference
+                // });
+                console.log('DISABLED: VoiceModule cone collection addShape call to prevent mesh sync interference');
               }
             });
           }
@@ -290,7 +304,7 @@ const VoiceModule: React.FC = () => {
             
             {processingResult && (
               <div className="card glass p-3 border border-sphaire-pink-light animate-fade-in">
-                <p className="text-sphaire-pink-light">⚙️ {processingResult}</p>
+                <p className="text-sphaire-pink-light">{processingResult}</p>
                 {parsedCommand && (
                   <div className="mt-2 pt-2 border-t border-sphaire-purple-light/30 text-xs">
                     <p className="text-sphaire-purple-light mb-1">Parsed command:</p>

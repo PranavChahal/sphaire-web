@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import fs from 'fs';
 import path from 'path';
 
-// 🚀 CRITICAL: Remove body size limit for heavy models
+// CRITICAL: Remove body size limit for heavy models
 export const config = {
   api: {
     bodyParser: {
@@ -39,7 +39,7 @@ export default async function handler(
     const filePath = path.join(modelsDir, fileName);
     fs.writeFileSync(filePath, buffer);
 
-    console.log('✅ Model saved to:', filePath);
+    console.log('Model saved to:', filePath);
 
     res.status(200).json({ 
       success: true, 
@@ -48,7 +48,7 @@ export default async function handler(
     });
 
   } catch (error) {
-    console.error('❌ Error saving model:', error);
+    console.error('Error saving model:', error);
     res.status(500).json({ 
       message: 'Failed to save model', 
       error: (error as Error).message 

@@ -31,7 +31,7 @@ export function createEngine(
   canvas: HTMLCanvasElement | string,
   options: EngineOptions = {}
 ): Engine {
-  console.log('🔧 Creating patched Babylon.js Engine instance');
+  console.log('Creating patched Babylon.js Engine instance');
   
   // Extract options with defaults
   const {
@@ -75,14 +75,14 @@ export function createEngine(
 export function patchEngineInstance(engine: Engine): void {
   if (!engine) return;
   
-  console.log('🧩 Patching engine instance with compatibility methods');
+  console.log('Patching engine instance with compatibility methods');
   
   const engineAny = engine as any;
   
   // Define missing or deprecated methods
   const compatibilityMethods = {
     wipeCaches: function(this: any) {
-      console.log('⚙️ Using wipeCaches compatibility method');
+      console.log('Using wipeCaches compatibility method');
       if (typeof this.clearCaches === 'function') {
         this.clearCaches();
       }
@@ -90,7 +90,7 @@ export function patchEngineInstance(engine: Engine): void {
     },
     
     getAspectRatio: function(this: any) {
-      console.log('⚙️ Using getAspectRatio compatibility method');
+      console.log('Using getAspectRatio compatibility method');
       // Safely access canvas dimensions with fallbacks
       if (typeof this.getRenderingCanvas === 'function') {
         const canvas = this.getRenderingCanvas();
@@ -102,12 +102,12 @@ export function patchEngineInstance(engine: Engine): void {
     },
     
     releaseFramebufferObjects: function(this: any) {
-      console.log('⚙️ Using releaseFramebufferObjects compatibility method');
+      console.log('Using releaseFramebufferObjects compatibility method');
       return this;
     },
     
     releaseEffects: function(this: any) {
-      console.log('⚙️ Using releaseEffects compatibility method');
+      console.log('Using releaseEffects compatibility method');
       return this;
     }
   };
@@ -120,7 +120,7 @@ export function patchEngineInstance(engine: Engine): void {
     }
   });
   
-  console.log('✅ Engine instance patched successfully');
+  console.log('Engine instance patched successfully');
 }
 
 /**
@@ -157,7 +157,7 @@ if (typeof window !== 'undefined') {
 // These are the compatibility methods extracted for global use
 const compatibilityMethods = {
   wipeCaches: function(this: any) {
-    console.log('⚙️ Using wipeCaches compatibility method');
+    console.log('Using wipeCaches compatibility method');
     if (typeof this.clearCaches === 'function') {
       this.clearCaches();
     }

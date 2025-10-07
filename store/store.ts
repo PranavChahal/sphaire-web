@@ -51,8 +51,22 @@ export interface ModelShape extends BaseShape {
   originalSize?: number; // Original file size in bytes for reference
 }
 
+// ⭐ NEW: Parametric shape with preserved parameters
+export interface ParametricShape extends BaseShape {
+  type: 'parametric';
+  shapeType: 'box' | 'cylinder' | 'sphere' | 'cone' | 'torus' | 'gear' | 'bottle' | 'threaded-rod' | 'custom';
+  parameters: Record<string, number>; // e.g., { width: 2, height: 3, depth: 1 }
+  constructionCode: string; // For regeneration
+  version: number; // For tracking parameter updates
+  meshData?: { positions: Float32Array; indices: Uint32Array }; // Mesh geometry for rendering
+  // Runtime only - not serialized
+  occShape?: any;
+  // Parameter metadata for UI controls (min, max, step)
+  metadata?: Record<string, { min: number; max: number; step: number }>;
+}
+
 // Union of all shape types
-export type Shape = BoxShape | SphereShape | CylinderShape | CustomShape | ModelShape;
+export type Shape = BoxShape | SphereShape | CylinderShape | CustomShape | ModelShape | ParametricShape;
 
 export interface ShapeState {
   shapes: Shape[];
@@ -61,7 +75,9 @@ export interface ShapeState {
   selectedVertices: Record<string, number[]>;
   
   addShape: (shapeData: Partial<Shape>) => void;
-  addModel: (modelData: Omit<ModelShape, 'id'>) => void;
+  addModel: (modelData: Omit<ModelShape, 'id'>) => string;
+  addParametricShape: (parametricData: Omit<ParametricShape, 'id'>) => string;
+  updateParametricParameters: (id: string, newParameters: Record<string, number>) => void;
   removeShape: (id: string) => void;
   updateShape: (id: string, updates: Partial<Shape>) => void;
   selectShape: (id: string | null) => void;
@@ -75,6 +91,11 @@ export interface ShapeState {
   undoRedoEnabled: boolean;
   setUndoRedoSystem: (undoRedoState: UndoRedoState | null) => void;
   _undoRedoSystem: UndoRedoState | null;
+  
+  // CRITICAL FIX: Internal methods for direct state updates (bypass undo/redo)
+  _addShapeDirect: (shape: Shape) => void;
+  _removeShapeDirect: (id: string) => void;
+  _updateShapeDirect: (id: string, updates: Partial<Shape>) => void;
 }
 
 const generateId = (prefix: string, counter: number) => `${prefix}-${counter}`;
@@ -163,6 +184,27 @@ const useStore = create<ShapeState>((set): ShapeState => ({
           originalSize: modelData.originalSize,
         };
         break;
+      
+      case 'parametric':
+        const parametricData = shapeData as Partial<ParametricShape>;
+        if (!parametricData.shapeType || !parametricData.parameters) {
+          console.error('Parametric shape requires shapeType and parameters');
+          return state;
+        }
+        newShape = {
+          id,
+          type: 'parametric',
+          position: shapeData.position || { x: 0, y: 0, z: 0 },
+          rotation: shapeData.rotation || { x: 0, y: 0, z: 0 },
+          scaling: shapeData.scaling || { x: 1, y: 1, z: 1 },
+          color: shapeData.color,
+          shapeType: parametricData.shapeType,
+          parameters: parametricData.parameters,
+          constructionCode: parametricData.constructionCode || '',
+          version: parametricData.version || 1,
+          occShape: parametricData.occShape,
+        };
+        break;
         
       default:
         console.error('Unknown shape type:', shapeType);
@@ -172,16 +214,18 @@ const useStore = create<ShapeState>((set): ShapeState => ({
     if (state.undoRedoEnabled && state._undoRedoSystem) {
       const undoRedoSystem = state._undoRedoSystem;
       
-      // Create undo/redo action
+      // Create undo/redo action using direct methods to avoid multiple subscriptions
       const action = {
         type: 'CREATE_SHAPE',
         description: `Create ${newShape.type}`,
         data: newShape,
         redo: async () => {
-          set((state) => ({ shapes: [...state.shapes, newShape] }));
+          // Use direct method to avoid triggering subscription multiple times
+          useStore.getState()._addShapeDirect(newShape);
         },
         undo: async () => {
-          set((state) => ({ shapes: state.shapes.filter(s => s.id !== newShape.id) }));
+          // Use direct method to avoid triggering subscription multiple times
+          useStore.getState()._removeShapeDirect(newShape.id);
         }
       };
       
@@ -198,22 +242,138 @@ const useStore = create<ShapeState>((set): ShapeState => ({
     };
   }),
   
-  addModel: (modelData: Omit<ModelShape, 'id'>) => set((state) => {
-    const id = generateId('model', state.lastCreatedId + 1);
-    
-    const newModel: ModelShape = {
-      id,
-      ...modelData
-    };
-    
-    // For now, add model directly without undo/redo integration
-    // TODO: Integrate with undo/redo system once interface is clarified
-    return { 
-      shapes: [...state.shapes, newModel],
-      selectedShapeId: id,
-      lastCreatedId: state.lastCreatedId + 1
-    };
-  }),
+  addModel: (modelData: Omit<ModelShape, 'id'>) => {
+    let createdId = '';
+    set((state) => {
+      const id = generateId('model', state.lastCreatedId + 1);
+      createdId = id;
+      const newModel: ModelShape = { id, ...modelData };
+
+      if (state.undoRedoEnabled && state._undoRedoSystem) {
+        const undoRedoSystem = state._undoRedoSystem;
+        const action = {
+          type: 'CREATE_MODEL',
+          description: `Create model ${newModel.fileName}`,
+          data: newModel,
+          redo: async () => {
+            // Use direct method to avoid multiple subscriptions
+            useStore.getState()._addShapeDirect(newModel);
+          },
+          undo: async () => {
+            // Use direct method to avoid multiple subscriptions
+            useStore.getState()._removeShapeDirect(newModel.id);
+          }
+        };
+        undoRedoSystem.executeAction(action);
+        return state; // no direct mutate when using undo/redo
+      }
+
+      // Default direct behavior if undo/redo disabled
+      return {
+        shapes: [...state.shapes, newModel],
+        selectedShapeId: id,
+        lastCreatedId: state.lastCreatedId + 1
+      };
+    });
+    return createdId;
+  },
+  
+  // ⭐ NEW: Add parametric shape with preserved parameters
+  addParametricShape: (parametricData: Omit<ParametricShape, 'id'>) => {
+    let createdId = '';
+    set((state) => {
+      const id = generateId('parametric', state.lastCreatedId + 1);
+      createdId = id;
+      const newParametric: ParametricShape = { id, ...parametricData };
+
+      if (state.undoRedoEnabled && state._undoRedoSystem) {
+        const undoRedoSystem = state._undoRedoSystem;
+        
+        // CRITICAL FIX: Add to state immediately to prevent race conditions
+        // The shape must be in state BEFORE subscriptions fire
+        const newState = {
+          shapes: [...state.shapes, newParametric],
+          selectedShapeId: id,
+          lastCreatedId: state.lastCreatedId + 1
+        };
+        
+        // Create undo/redo action (redo will check if shape exists to prevent duplicates)
+        const action = {
+          type: 'CREATE_PARAMETRIC',
+          description: `Create parametric ${newParametric.shapeType}`,
+          data: newParametric,
+          redo: async () => {
+            // Only add if it doesn't exist (for actual redo operations)
+            const currentShapes = useStore.getState().shapes;
+            if (!currentShapes.find(s => s.id === newParametric.id)) {
+              useStore.getState()._addShapeDirect(newParametric);
+            }
+          },
+          undo: async () => {
+            useStore.getState()._removeShapeDirect(newParametric.id);
+          }
+        };
+        
+        // Execute action for undo/redo history (async)
+        undoRedoSystem.executeAction(action);
+        
+        return newState;
+      }
+
+      return {
+        shapes: [...state.shapes, newParametric],
+        selectedShapeId: id,
+        lastCreatedId: state.lastCreatedId + 1
+      };
+    });
+    return createdId;
+  },
+  
+  // ⭐ NEW: Update parametric shape parameters
+  updateParametricParameters: (id: string, newParameters: Record<string, number>) => {
+    set((state) => {
+      const shape = state.shapes.find(s => s.id === id);
+      if (!shape || shape.type !== 'parametric') {
+        console.error('Shape not found or not parametric:', id);
+        return state;
+      }
+
+      const oldShape = shape as ParametricShape;
+      const updatedShape: ParametricShape = {
+        ...oldShape,
+        parameters: newParameters,
+        version: oldShape.version + 1,
+      };
+
+      if (state.undoRedoEnabled && state._undoRedoSystem) {
+        const undoRedoSystem = state._undoRedoSystem;
+        const action = {
+          type: 'UPDATE_PARAMETRIC_PARAMS',
+          description: `Update ${oldShape.shapeType} parameters`,
+          data: { id, oldParameters: oldShape.parameters, newParameters },
+          redo: async () => {
+            useStore.getState()._updateShapeDirect(id, {
+              parameters: newParameters,
+              version: oldShape.version + 1
+            } as Partial<ParametricShape>);
+          },
+          undo: async () => {
+            useStore.getState()._updateShapeDirect(id, {
+              parameters: oldShape.parameters,
+              version: oldShape.version
+            } as Partial<ParametricShape>);
+          }
+        };
+        undoRedoSystem.executeAction(action);
+        return state;
+      }
+
+      return {
+        ...state,
+        shapes: state.shapes.map(s => s.id === id ? updatedShape : s)
+      };
+    });
+  },
   
   removeShape: (id) => set((state) => {
     const shapeToRemove = state.shapes.find(s => s.id === id);
@@ -223,19 +383,18 @@ const useStore = create<ShapeState>((set): ShapeState => ({
     if (state.undoRedoEnabled && state._undoRedoSystem) {
       const undoRedoSystem = state._undoRedoSystem;
       
-      // Create undo/redo action
+      // Create undo/redo action using direct methods
       const action = {
         type: 'DELETE_SHAPE',
         description: `Delete ${shapeToRemove.type}`,
         data: shapeToRemove,
         redo: async () => {
-          set((state) => ({
-            shapes: state.shapes.filter((shape) => shape.id !== id),
-            selectedShapeId: state.selectedShapeId === id ? null : state.selectedShapeId
-          }));
+          // Use direct method to avoid multiple subscriptions
+          useStore.getState()._removeShapeDirect(id);
         },
         undo: async () => {
-          set((state) => ({ shapes: [...state.shapes, shapeToRemove] }));
+          // Use direct method to avoid multiple subscriptions
+          useStore.getState()._addShapeDirect(shapeToRemove);
         }
       };
       
@@ -261,32 +420,32 @@ const useStore = create<ShapeState>((set): ShapeState => ({
     if (state.undoRedoEnabled && state._undoRedoSystem) {
       const undoRedoSystem = state._undoRedoSystem;
       
-      // Create undo/redo action
+      // Create undo/redo action using direct methods
       const action = {
         type: 'UPDATE_SHAPE',
         description: `Update ${oldShape.type}`,
         data: { id, oldShape, newShape },
         redo: async () => {
-          set((state) => ({
-            ...state,
-            shapes: state.shapes.map((shape) =>
-              shape.id === id ? newShape : shape
-            )
-          }));
+          // Use direct method to avoid multiple subscriptions
+          useStore.getState()._updateShapeDirect(id, newShape);
         },
         undo: async () => {
-          set((state) => ({
-            ...state,
-            shapes: state.shapes.map((shape) =>
-              shape.id === id ? oldShape : shape
-            )
-          }));
+          // Use direct method to avoid multiple subscriptions
+          useStore.getState()._updateShapeDirect(id, oldShape);
         }
       };
       
       // Execute through undo/redo system
       undoRedoSystem.executeAction(action);
-      return state; // Don't modify state directly
+      
+      // CRITICAL FIX: Also update state immediately so viewport gets new data
+      // The undo/redo action is already registered, this just makes the change visible immediately
+      return {
+        ...state,
+        shapes: state.shapes.map((shape) =>
+          shape.id === id ? newShape : shape
+        )
+      };
     }
     
     // Default behavior when undo/redo is disabled
@@ -352,7 +511,24 @@ const useStore = create<ShapeState>((set): ShapeState => ({
     return selectedForShape.includes(vertexIndex);
   },
   
-  setUndoRedoSystem: (undoRedoState) => set({ _undoRedoSystem: undoRedoState })
+  setUndoRedoSystem: (undoRedoState) => set({ _undoRedoSystem: undoRedoState }),
+  
+  // CRITICAL FIX: Direct state update methods (bypass undo/redo to prevent multiple subscriptions)
+  _addShapeDirect: (shape: Shape) => set((state) => ({
+    shapes: [...state.shapes, shape],
+    selectedShapeId: shape.id,
+    lastCreatedId: state.lastCreatedId + 1
+  })),
+  
+  _removeShapeDirect: (id: string) => set((state) => ({
+    shapes: state.shapes.filter(s => s.id !== id),
+    selectedShapeId: state.selectedShapeId === id ? null : state.selectedShapeId
+  })),
+  
+  _updateShapeDirect: (id: string, updates: Partial<Shape>) => set((state) => ({
+    ...state,
+    shapes: state.shapes.map(shape => shape.id === id ? { ...shape, ...updates } as Shape : shape)
+  }))
 }));
 
 export default useStore;

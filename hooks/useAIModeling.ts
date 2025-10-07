@@ -1,12 +1,12 @@
 import { useState, useCallback } from 'react';
 import { Scene, AbstractMesh, Mesh } from '@babylonjs/core';
+import { occMainThreadExecutor } from '@/services/occMainThreadExecutor';
 
 export interface AIModelRequest {
   prompt: string;
   backend?: 'babylon' | 'opencascade' | 'auto';
   complexity?: 'simple' | 'medium' | 'complex';
 }
-
 export interface AIModelResponse {
   code: string;
   backend: 'babylon' | 'opencascade';
@@ -38,9 +38,11 @@ export const useAIModeling = () => {
     try {
       const startTime = Date.now();
       
-      const enhancedPrompt = buildEnhancedPrompt(request);
+      const payloadPrompt = request.backend === 'opencascade'
+        ? request.prompt
+        : buildEnhancedPrompt(request);
       
-      console.log('🤖 AI-MODELING: Generating code for:', request.prompt);
+      console.log('AI-MODELING: Generating code for:', request.prompt);
       
       const response = await fetch('/api/ai-code', {
         method: 'POST',
@@ -48,8 +50,8 @@ export const useAIModeling = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          prompt: enhancedPrompt,
-          backend: request.backend || 'auto',
+          prompt: payloadPrompt,
+          backend: request.backend || 'opencascade',
           model: 'gpt-4o'
         })
       });
@@ -62,7 +64,10 @@ export const useAIModeling = () => {
       const data = await response.json();
       const executionTime = Date.now() - startTime;
       
-      const backend = detectBackend(data.code);
+      const backend: 'babylon' | 'opencascade' =
+        (request.backend && request.backend !== 'auto')
+          ? (request.backend as 'babylon' | 'opencascade')
+          : detectBackend(data.code);
       
       const result: AIModelResponse = {
         code: data.code,
@@ -72,7 +77,7 @@ export const useAIModeling = () => {
         executionTime
       };
 
-      console.log('🔧 AI-MODELING: Full generated code:');
+      console.log('AI-MODELING: Full generated code:');
       console.log('=====================================');
       console.log(result.code);
       console.log('=====================================');
@@ -85,12 +90,12 @@ export const useAIModeling = () => {
         history: [...prev.history, result]
       }));
 
-      console.log(`✅ AI-MODELING: Generated ${result.tokenCount} tokens in ${executionTime}ms`);
+      console.log(`AI-MODELING: Generated ${result.tokenCount} tokens in ${executionTime}ms`);
       return result;
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error('🚨 AI-MODELING: Generation failed:', errorMessage);
+      console.error('AI-MODELING: Generation failed:', errorMessage);
       
       setState(prev => ({
         ...prev,
@@ -113,7 +118,7 @@ export const useAIModeling = () => {
     setState(prev => ({ ...prev, isExecuting: true, error: null }));
     
     try {
-      console.log(`🎯 AI-MODELING: Executing ${backend} code...`);
+      console.log(`AI-MODELING: Executing ${backend} code...`);
       
       let createdMeshes: AbstractMesh[] = [];
       
@@ -145,12 +150,12 @@ export const useAIModeling = () => {
         isExecuting: false
       }));
       
-      console.log(`✅ AI-MODELING: Successfully executed code, created ${createdMeshes.length} meshes`);
+      console.log(`AI-MODELING: Successfully executed code, created ${createdMeshes.length} meshes`);
       return createdMeshes;
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown execution error';
-      console.error('🚨 AI-MODELING: Execution failed:', errorMessage);
+      console.error('AI-MODELING: Execution failed:', errorMessage);
       
       setState(prev => ({
         ...prev,
@@ -168,9 +173,10 @@ export const useAIModeling = () => {
   const generateAndExecute = useCallback(async (
     request: AIModelRequest, 
     scene: Scene
-  ): Promise<AbstractMesh[]> => {
+  ): Promise<{ meshes: AbstractMesh[]; response: AIModelResponse }> => {
     const response = await generateModel(request);
-    return await executeCode(response.code, scene, response.backend);
+    const meshes = await executeCode(response.code, scene, response.backend);
+    return { meshes, response };
   }, [generateModel, executeCode]);
 
   /**
@@ -203,7 +209,7 @@ export const useAIModeling = () => {
 function buildEnhancedPrompt(request: AIModelRequest): string {
   const systemPrompt = `You are an expert 3D modeling assistant for Babylon.js 8.
 
-🚨 CRITICAL REQUIREMENTS:
+CRITICAL REQUIREMENTS:
 - Generate ONLY pure JavaScript code (NO TypeScript syntax)
 - NO type annotations like 'const position: BABYLON.Vector3'
 - NO imports, NO OpenCascade, NO tessellation
@@ -253,7 +259,7 @@ Generate pure JavaScript Babylon.js code:`;
 function detectBackend(
   code: string
 ): 'babylon' | 'opencascade' {
-  console.log('🔧 AI-MODELING: Analyzing code for backend detection...');
+  console.log('AI-MODELING: Analyzing code for backend detection...');
   
   // Check for OpenCascade patterns
   const hasOCCTPatterns = (
@@ -285,15 +291,15 @@ function detectBackend(
   } else if (hasOCCTPatterns && hasBabylonPatterns) {
     // If both patterns are present, prefer OpenCascade for CAD operations
     detectedBackend = 'opencascade';
-    console.log('🔧 AI-MODELING: Mixed patterns detected, preferring OpenCascade for CAD');
+    console.log('AI-MODELING: Mixed patterns detected, preferring OpenCascade for CAD');
   } else {
-    // Default to Babylon.js if no clear patterns
-    detectedBackend = 'babylon';
+    // Default to OpenCascade for CAD precision
+    detectedBackend = 'opencascade';
   }
   
-  console.log('🔧 AI-MODELING: Backend detection result:', detectedBackend);
-  console.log('🔧 AI-MODELING: OCCT patterns found:', hasOCCTPatterns);
-  console.log('🔧 AI-MODELING: Babylon patterns found:', hasBabylonPatterns);
+  console.log('AI-MODELING: Backend detection result:', detectedBackend);
+  console.log('AI-MODELING: OCCT patterns found:', hasOCCTPatterns);
+  console.log('AI-MODELING: Babylon patterns found:', hasBabylonPatterns);
   
   return detectedBackend;
 }
@@ -305,7 +311,7 @@ async function executeBabylonCode(code: string, scene: Scene, babylonObjects: an
   const meshesBeforeExecution = scene.meshes.slice();
   
   try {
-    console.log('🎯 AI-MODELING: Executing Babylon.js code:', code.substring(0, 100) + '...');
+    console.log('AI-MODELING: Executing Babylon.js code:', code.substring(0, 100) + '...');
     
     // Strip markdown code fences if present
     let cleanCode = code.trim();
@@ -317,7 +323,7 @@ async function executeBabylonCode(code: string, scene: Scene, babylonObjects: an
     if (match) {
       // Use only the code inside the markdown block
       cleanCode = match[1].trim();
-      console.log('🎯 AI-MODELING: Extracted code from markdown block');
+      console.log('AI-MODELING: Extracted code from markdown block');
     } else {
       // Fallback: manual cleaning for cases without proper markdown
       if (cleanCode.startsWith('```javascript') || cleanCode.startsWith('```js')) {
@@ -341,7 +347,7 @@ async function executeBabylonCode(code: string, scene: Scene, babylonObjects: an
       }
       
       cleanCode = cleanCode.trim();
-      console.log('🎯 AI-MODELING: Manual cleaning applied');
+      console.log('AI-MODELING: Manual cleaning applied');
     }
     
     // Validate code isn't empty or incomplete
@@ -355,21 +361,21 @@ async function executeBabylonCode(code: string, scene: Scene, babylonObjects: an
     const openParens = (cleanCode.match(/\(/g) || []).length;
     const closeParens = (cleanCode.match(/\)/g) || []).length;
     
-    console.log('🎯 AI-MODELING: Code validation - Braces:', openBraces, 'vs', closeBraces, 'Parens:', openParens, 'vs', closeParens);
+    console.log('AI-MODELING: Code validation - Braces:', openBraces, 'vs', closeBraces, 'Parens:', openParens, 'vs', closeParens);
     
     if (openBraces !== closeBraces) {
-      console.warn('⚠️ AI-MODELING: Mismatched braces detected, attempting to fix...');
+      console.warn('AI-MODELING: Mismatched braces detected, attempting to fix...');
     }
     if (openParens !== closeParens) {
-      console.warn('⚠️ AI-MODELING: Mismatched parentheses detected, attempting to fix...');
+      console.warn('AI-MODELING: Mismatched parentheses detected, attempting to fix...');
     }
     
-    console.log('🎯 AI-MODELING: Clean code to execute (first 500 chars):', cleanCode.substring(0, 500));
-    console.log('🎯 AI-MODELING: Clean code to execute (last 200 chars):', cleanCode.substring(Math.max(0, cleanCode.length - 200)));
+    console.log('AI-MODELING: Clean code to execute (first 500 chars):', cleanCode.substring(0, 500));
+    console.log('AI-MODELING: Clean code to execute (last 200 chars):', cleanCode.substring(Math.max(0, cleanCode.length - 200)));
     
     // Use passed Babylon.js objects instead of global scope
     const { Vector3, Color3, MeshBuilder, StandardMaterial, Mesh, Tools, Material, Texture, Engine, VertexData, MathJS } = babylonObjects;
-    console.log('🎯 AI-MODELING: Babylon objects available:', !!MeshBuilder, !!Vector3, !!Color3, !!StandardMaterial, !!Mesh, !!Tools, !!VertexData);
+    console.log('AI-MODELING: Babylon objects available:', !!MeshBuilder, !!Vector3, !!Color3, !!StandardMaterial, !!Mesh, !!Tools, !!VertexData);
     
     // Create execution context with passed Babylon.js objects
     const executionScope = {
@@ -387,9 +393,9 @@ async function executeBabylonCode(code: string, scene: Scene, babylonObjects: an
       VertexData, // For custom mesh creation
       Math: MathJS, // JavaScript Math object (avoid scoping conflict)
       console: {
-        log: (...args: any[]) => console.log('📝 AI-CODE:', ...args),
-        error: (...args: any[]) => console.error('❌ AI-CODE:', ...args),
-        warn: (...args: any[]) => console.warn('⚠️ AI-CODE:', ...args)
+        log: (...args: any[]) => console.log('AI-CODE:', ...args),
+        error: (...args: any[]) => console.error('AI-CODE:', ...args),
+        warn: (...args: any[]) => console.warn('AI-CODE:', ...args)
       }
     };
     
@@ -409,7 +415,7 @@ async function executeBabylonCode(code: string, scene: Scene, babylonObjects: an
     );
     
     const executionResult = executeInScope(executionScope);
-    console.log('🎯 AI-MODELING: Execution result:', executionResult);
+    console.log('AI-MODELING: Execution result:', executionResult);
     
     if (!executionResult.success) {
       throw new Error(`Code execution failed: ${executionResult.error}`);
@@ -417,134 +423,90 @@ async function executeBabylonCode(code: string, scene: Scene, babylonObjects: an
     
     // Return newly created meshes
     const newMeshes = scene.meshes.filter(mesh => !meshesBeforeExecution.includes(mesh));
-    console.log(`✅ AI-MODELING: Created ${newMeshes.length} new mesh(es)`);
+    console.log(`AI-MODELING: Created ${newMeshes.length} new mesh(es)`);
     
     if (newMeshes.length > 0) {
-      console.log('🎯 AI-MODELING: New meshes:', newMeshes.map(m => m.name));
+      console.log('AI-MODELING: New meshes:', newMeshes.map(m => m.name));
       
-      // 🚨 UNIFIED STORE ARCHITECTURE: No longer using scene.metadata.importedMeshes
+      // UNIFIED STORE ARCHITECTURE: No longer using scene.metadata.importedMeshes
       // All model data is now stored in the unified store for perfect serialization
       // The mesh will be automatically managed by the store-based import system list
       // newMeshes.forEach(mesh => {
       //   scene.metadata.importedMeshes.push(mesh);
-      //   console.log('🎯 AI-MODELING: Tracked mesh for deletion:', mesh.name);
+      //   console.log('AI-MODELING: Tracked mesh for deletion:', mesh.name);
       // });
     }
     
     return newMeshes;
     
   } catch (error) {
-    console.error('🚨 AI-MODELING: Babylon.js execution error:', error);
+    console.error('AI-MODELING: Babylon.js execution error:', error);
     throw new Error(`Babylon.js execution failed: ${error}`);
   }
 }
 
 /**
- * Execute OpenCascade.js code safely
+ * Execute OpenCascade.js code safely using main thread executor
  */
 async function executeOpenCascadeCode(code: string, scene: Scene): Promise<AbstractMesh[]> {
   try {
-    console.log('🔧 AI-MODELING: Executing OpenCascade.js code...');
-    console.log('🔧 AI-MODELING: OCCT Code:', code.substring(0, 200) + '...');
+    console.log('AI-MODELING: Executing OpenCascade.js code on main thread...');
+    console.log('AI-MODELING: OCCT Code:', code.substring(0, 200) + '...');
     
-    // Import the OpenCascade executor
-    const { occExecutor } = await import('../services/occExecutor');
+    // Use main thread executor
+    const meshData = await occMainThreadExecutor.executeCode(code);
     
-    // Execute OCCT code using our worker service
-    const result = await occExecutor.executeCode(code);
+    console.log('AI-MODELING: OCCT execution successful, creating Babylon meshes...');
     
-    if (!result.success) {
-      throw new Error(result.error || 'OpenCascade execution failed');
-    }
-    
-    console.log('✅ AI-MODELING: OCCT execution successful:', result);
-    
-    // Convert OCCT result to Babylon.js meshes
-    const { MeshBuilder, StandardMaterial, Color3 } = await import('@babylonjs/core');
+    // Import Babylon classes
+    const { Mesh, VertexData, StandardMaterial, Color3 } = await import('@babylonjs/core');
     
     const meshes: AbstractMesh[] = [];
     
-    // Check if we have actual geometry data from OpenCascade
-    if (result.geometry) {
-      console.log('🔧 AI-MODELING: Converting OpenCascade geometry to Babylon.js mesh...');
-      
-      try {
-        // If the result contains tessellated geometry data
-        if ((result as any).vertices && (result as any).indices) {
-          const { vertices, indices } = result as any;
-          
-          console.log(`🔧 AI-MODELING: Creating mesh from ${vertices.length / 3} vertices, ${indices.length / 3} triangles`);
-          
-          // Create custom mesh from OpenCascade geometry
-          const mesh = new Mesh('occt-generated', scene);
-          
-          const { VertexData } = await import('@babylonjs/core');
-          const vertexData = new VertexData();
-          vertexData.positions = vertices;
-          vertexData.indices = indices;
-          
-          // Calculate normals for proper lighting
-          vertexData.normals = [];
-          VertexData.ComputeNormals(vertices, indices, vertexData.normals);
-          
-          // Apply vertex data to mesh
-          vertexData.applyToMesh(mesh);
-          
-          // Apply OpenCascade material
-          const material = new StandardMaterial('occt-material', scene);
-          material.diffuseColor = new Color3(0.7, 0.9, 1.0); // Light blue for OCCT
-          material.specularColor = new Color3(0.3, 0.3, 0.3);
-          material.roughness = 0.4;
-          mesh.material = material;
-          
-          meshes.push(mesh);
-          
-        } else {
-          console.warn('🔧 AI-MODELING: No tessellated geometry data, creating fallback mesh');
-          // Create fallback if no geometry data
-          const fallbackMesh = MeshBuilder.CreateBox('occt-fallback', { size: 2 }, scene);
-          const material = new StandardMaterial('occt-fallback-material', scene);
-          material.diffuseColor = new Color3(0.2, 0.8, 0.2);
-          fallbackMesh.material = material;
-          meshes.push(fallbackMesh);
-        }
+    // Handle single mesh or array of meshes
+    const meshDataArray = Array.isArray(meshData) ? meshData : [meshData];
+    
+    for (const data of meshDataArray) {
+      if (data && data.positions && data.indices) {
+        console.log(`Creating mesh "${data.name}" with ${data.positions.length / 3} vertices`);
         
-      } catch (conversionError) {
-        console.error('🚨 AI-MODELING: Geometry conversion failed:', conversionError);
-        // Create fallback on conversion error
-        const fallbackMesh = MeshBuilder.CreateBox('occt-error-fallback', { size: 2 }, scene);
-        const material = new StandardMaterial('occt-error-material', scene);
-        material.diffuseColor = new Color3(1.0, 0.5, 0.2); // Orange for error
-        fallbackMesh.material = material;
-        meshes.push(fallbackMesh);
+        // Create Babylon mesh
+        const mesh = new Mesh(data.name || 'occt-generated', scene);
+        
+        // Create vertex data
+        const vertexData = new VertexData();
+        vertexData.positions = data.positions;
+        vertexData.indices = data.indices;
+        
+        // Calculate normals
+        const normals: number[] = [];
+        VertexData.ComputeNormals(data.positions, data.indices, normals);
+        vertexData.normals = normals;
+        
+        // Apply to mesh
+        vertexData.applyToMesh(mesh);
+        
+        // Create material
+        const material = new StandardMaterial('occt-material-' + Date.now(), scene);
+        material.diffuseColor = new Color3(0.7, 0.9, 1.0);
+        material.specularColor = new Color3(0.3, 0.3, 0.3);
+        material.backFaceCulling = false;  // Critical fix: Disable backface culling
+        material.twoSidedLighting = true;  // Enable two-sided lighting
+        mesh.material = material;
+        
+        meshes.push(mesh);
       }
-      
-    } else {
-      console.warn('🔧 AI-MODELING: No OpenCascade geometry in result, creating fallback');
-      // Create fallback if no result geometry
-      const fallbackMesh = MeshBuilder.CreateBox('occt-no-geometry', { size: 2 }, scene);
-      const material = new StandardMaterial('occt-no-geo-material', scene);
-      material.diffuseColor = new Color3(0.8, 0.2, 0.2); // Red for missing geometry
-      fallbackMesh.material = material;
-      meshes.push(fallbackMesh);
     }
     
-    // Add metadata to all meshes
-    meshes.forEach(mesh => {
-      mesh.metadata = {
-        source: 'opencascade',
-        generatedCode: code,
-        executionResult: result,
-        timestamp: Date.now()
-      };
-    });
+    if (meshes.length === 0) {
+      throw new Error('No valid meshes created from OpenCascade code');
+    }
     
-    console.log(`✅ AI-MODELING: Created ${meshes.length} OpenCascade mesh(es):`, meshes.map(m => m.name));
-    
+    console.log(`AI-MODELING: Created ${meshes.length} OpenCascade mesh(es)`);
     return meshes;
     
   } catch (error) {
-    console.error('🚨 AI-MODELING: OpenCascade.js execution error:', error);
+    console.error('AI-MODELING: OpenCascade.js execution error:', error);
     throw new Error(`OpenCascade.js execution failed: ${error}`);
   }
 }

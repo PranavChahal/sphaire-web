@@ -12,7 +12,7 @@ import { PBRTextureStack } from '../services/stableMaterialsService';
 import { Vector3 } from '@babylonjs/core';
 
 import * as SubObjectEditor from '../utils/subObjectEditor';
-import { Shape, BoxShape, SphereShape, CylinderShape } from '../store/store';
+import { Shape } from '../store/store';
 
 interface SidebarProps {
   activeTab: string;
@@ -34,7 +34,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
   
 
   
-  const addShape = useStore(state => state.addShape);
+  const addShapeDirectly = useStore(state => state._addShapeDirect); // Direct addition without undo/redo
+  const removeShapeDirectly = useStore(state => state._removeShapeDirect); // Direct removal for undo/redo
+  const undoRedoSystem = useStore(state => state._undoRedoSystem);
   
   // Get scene and selected meshes from scene store for AI modeling and texture generation
   const { scene, selectedMeshes } = useSceneStore();
@@ -144,6 +146,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
     subObjectMode,
     subObjectSelectedElements: selectedElements, 
     setSubObjectMode,
+    setActiveMesh,
     // setSubObjectSelectedElements omitted as it's unused
     clearSubObjectSelection
   } = useUIStore();
@@ -207,73 +210,107 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
     setSidebarMode(sidebarMode === 'expanded' ? 'compact' : 'expanded');
   };
   
-  // Handler for adding a new shape from the sidebar form
-  const handleAddShape = () => {
+  // NEW: Ground-up rewrite - Direct, immediate shape creation with proper undo/redo
+  const handleCreateShape = async () => {
+    const type = selectedShapeType as 'box' | 'sphere' | 'cylinder';
+    
     try {
-      // Get values from form inputs
-      const type = selectedShapeType as 'box' | 'sphere' | 'cylinder';
-      
-      // Parse numeric values with defaults
-      const parseInputValue = (ref: React.RefObject<HTMLInputElement>, defaultValue: number): number => {
-        const value = ref.current?.value;
-        return value ? parseFloat(value) : defaultValue;
-      };
+      console.log('DIRECT: Creating shape immediately:', type);
       
       // Get position values
       const position = {
-        x: parseInputValue(posXRef, 0),
-        y: parseInputValue(posYRef, 1),
-        z: parseInputValue(posZRef, 0)
+        x: parseFloat(posXRef.current?.value || '0'),
+        y: parseFloat(posYRef.current?.value || '0'),
+        z: parseFloat(posZRef.current?.value || '0')
       };
       
-      // Get rotation values
+      // Get rotation values (stored in degrees)
       const rotation = {
-        x: parseInputValue(rotXRef, 0),
-        y: parseInputValue(rotYRef, 0),
-        z: parseInputValue(rotZRef, 0)
+        x: parseFloat(rotXRef.current?.value || '0'),
+        y: parseFloat(rotYRef.current?.value || '0'),
+        z: parseFloat(rotZRef.current?.value || '0')
       };
       
       // Get scaling values
       const scaling = {
-        x: parseInputValue(scaleXRef, 1),
-        y: parseInputValue(scaleYRef, 1),
-        z: parseInputValue(scaleZRef, 1)
+        x: parseFloat(scaleXRef.current?.value || '1'),
+        y: parseFloat(scaleYRef.current?.value || '1'),
+        z: parseFloat(scaleZRef.current?.value || '1')
       };
       
-      // Prepare shape data based on type
-      const shapeData: Partial<Shape> = {
-        type,
-        position,
-        rotation,
-        scaling,
-        color: '#ff00ff' // Default color
-      };
+      // Generate unique ID
+      const shapeId = `shape_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
-      // Add type-specific properties with proper typing
+      // Create complete shape object based on type
+      let newShape: Shape;
+      
       if (type === 'box') {
-        (shapeData as Partial<BoxShape>).dimensions = {
-          width: scaling.x,
-          height: scaling.y,
-          depth: scaling.z
+        newShape = {
+          id: shapeId,
+          type: 'box',
+          position,
+          rotation,
+          scaling,
+          color: '#ff00ff',
+          dimensions: {
+            width: scaling.x,
+            height: scaling.y,
+            depth: scaling.z
+          }
         };
       } else if (type === 'sphere') {
-        (shapeData as Partial<SphereShape>).radius = scaling.x;
-      } else if (type === 'cylinder') {
-        (shapeData as Partial<CylinderShape>).height = scaling.y;
-        (shapeData as Partial<CylinderShape>).diameter = scaling.x * 2;
+        newShape = {
+          id: shapeId,
+          type: 'sphere',
+          position,
+          rotation,
+          scaling,
+          color: '#ff00ff',
+          radius: scaling.x
+        };
+      } else { // cylinder
+        newShape = {
+          id: shapeId,
+          type: 'cylinder',
+          position,
+          rotation,
+          scaling,
+          color: '#ff00ff',
+          height: scaling.y,
+          diameter: scaling.x * 2
+        };
       }
       
-      // Ensure the shape has an ID before adding it
-      if (!shapeData.id) {
-        shapeData.id = `shape_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      console.log('PROPER: Creating shape through undo/redo system with direct methods');
+      
+      // PROPER FIX: Use undo/redo system correctly, but with direct methods for speed
+      if (undoRedoSystem && undoRedoSystem.executeAction) {
+        const createAction = {
+          type: 'CREATE_SHAPE_DIRECT',
+          description: `Create ${newShape.type}`,
+          data: newShape,
+          redo: async () => {
+            console.log('UNDO/REDO: Creating shape with direct method:', newShape.id);
+            addShapeDirectly(newShape);
+          },
+          undo: async () => {
+            console.log('UNDO/REDO: Removing shape with direct method:', newShape.id);
+            removeShapeDirectly(newShape.id);
+          }
+        };
+        
+        // Execute through undo/redo system (this will call redo() and add to history)
+        await undoRedoSystem.executeAction(createAction);
+        console.log('PROPER: Shape created through undo/redo system, fully trackable');
+      } else {
+        // Fallback: Direct creation without undo/redo
+        console.log('FALLBACK: Creating shape directly (no undo/redo available)');
+        addShapeDirectly(newShape);
+        console.log('FALLBACK: Shape added directly');
       }
       
-      // Add the shape to the store
-      addShape(shapeData);
-      
-      console.log('Shape added to store:', shapeData);
     } catch (error) {
-      console.error('Error adding shape:', error);
+      console.error('DIRECT: Error in direct shape creation:', error);
     }
   };
 
@@ -460,7 +497,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
                 
                 <button 
                   className="w-full bg-sphaire-dark hover:bg-sphaire-purple-dark text-sphaire-pink-light border border-sphaire-purple-light hover:border-sphaire-pink-light rounded-md py-2 px-4 flex items-center justify-center mt-4 transition-all duration-300 shadow-purple-glow-sm hover:shadow-pink-glow-sm"
-                  onClick={handleAddShape}
+                  onClick={handleCreateShape}
                 >
                   <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 01-1 1h-5a1 1 0 01-1-1v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
@@ -479,7 +516,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
             <AIModelingPanel 
               scene={scene} // Pass the actual Babylon.js scene from the scene store
               onModelCreated={(meshes) => {
-                console.log(`🤖 AI-MODELING: Created ${meshes.length} mesh(es) in scene`);
+                console.log(`AI-MODELING: Created ${meshes.length} mesh(es) in scene`);
                 // Additional mesh handling can be added here
               }}
               className="h-full"
@@ -511,7 +548,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
                 <div className="grid grid-cols-3 gap-2">
                   <button 
                     className={`btn-secondary py-1 px-2 text-xs flex items-center justify-center ${subObjectMode === 'vertex' ? 'bg-sphaire-pink text-white' : ''}`}
-                    onClick={() => setSubObjectMode('vertex')}
+                    onClick={() => {
+                      if (selectedMesh && !activeMesh) {
+                        setActiveMesh(selectedMesh as any);
+                      }
+                      setSubObjectMode('vertex');
+                    }}
                   >
                     <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4zm5-1.757l4.9-4.9a2 2 0 000-2.828L13.485 5.1a2 2 0 00-2.828 0L10 5.757v8.486zM16 18H9.071l6-6H16a2 2 0 012 2v2a2 2 0 01-2 2z" />
@@ -520,7 +562,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
                   </button>
                   <button 
                     className={`btn-secondary py-1 px-2 text-xs flex items-center justify-center ${subObjectMode === 'edge' ? 'bg-sphaire-pink text-white' : ''}`}
-                    onClick={() => setSubObjectMode('edge')}
+                    onClick={() => {
+                      if (selectedMesh && !activeMesh) {
+                        setActiveMesh(selectedMesh as any);
+                      }
+                      setSubObjectMode('edge');
+                    }}
                   >
                     <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
@@ -529,7 +576,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
                   </button>
                   <button 
                     className={`btn-secondary py-1 px-2 text-xs flex items-center justify-center ${subObjectMode === 'face' ? 'bg-sphaire-pink text-white' : ''}`}
-                    onClick={() => setSubObjectMode('face')}
+                    onClick={() => {
+                      if (selectedMesh && !activeMesh) {
+                        setActiveMesh(selectedMesh as any);
+                      }
+                      setSubObjectMode('face');
+                    }}
                   >
                     <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                       <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
@@ -602,7 +654,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
             <AIModelingPanel 
               scene={scene} // Pass the actual Babylon.js scene from the scene store
               onModelCreated={(meshes) => {
-                console.log(`🤖 AI-MODELING: Created ${meshes.length} mesh(es) in scene`);
+                console.log(`AI-MODELING: Created ${meshes.length} mesh(es) in scene`);
                 // Additional mesh handling can be added here
               }}
               className="h-full"
@@ -613,30 +665,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
         return (
           <div className="p-4 overflow-y-auto h-full flex flex-col gap-4">
             <div className="bg-sphaire-dark-lighter p-4 rounded-lg border border-sphaire-purple-light border-opacity-30 shadow-purple-glow">
-              <h3 className="text-md font-medium text-sphaire-pink-light mb-3">File Management</h3>
-              <div className="space-y-3">
-                <button className="w-full bg-sphaire-dark hover:bg-sphaire-purple-dark text-sphaire-pink-light border border-sphaire-purple-light hover:border-sphaire-pink-light rounded-md py-2 px-4 flex items-center justify-center transition-all duration-300 shadow-purple-glow-sm hover:shadow-pink-glow-sm">
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                  </svg>
-                  New File
-                </button>
-                <button className="w-full bg-sphaire-dark hover:bg-sphaire-purple-dark text-sphaire-purple-light border border-sphaire-purple-light hover:border-sphaire-pink-light rounded-md py-2 px-4 flex items-center justify-center transition-all duration-300">
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-5L7 5a2 2 0 00-2 2z" />
-                  </svg>
-                  Open File
-                </button>
-                <button className="w-full bg-sphaire-dark hover:bg-sphaire-purple-dark text-sphaire-purple-light border border-sphaire-purple-light hover:border-sphaire-pink-light rounded-md py-2 px-4 flex items-center justify-center transition-all duration-300">
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 0V6a2 2 0 00-2-2H9a2 2 0 00-2 2v1m1 0h4m-4 0v3a1 1 0 001 1h2a1 1 0 001-1V8" />
-                  </svg>
-                  Save File
-                </button>
-              </div>
-            </div>
-            <div className="text-xs text-sphaire-purple-light/70 mt-2">
-              
+              <h3 className="text-md font-medium text-sphaire-pink-light mb-3">Code Editor</h3>
+              <p className="text-sm text-sphaire-purple-light">Code editor functionality coming soon...</p>
             </div>
           </div>
         );
@@ -1151,20 +1181,20 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
                 <button 
                   onClick={async () => {
                     try {
-                      console.log('🎬 UI: Starting capture process...');
+                      console.log('UI: Starting capture process...');
                       const dataUrl = await renderCameraActions.captureHighQualityRender();
                       
                       if (dataUrl && dataUrl.length > 0) {
-                        console.log('🎬 UI: Got dataUrl, starting download...');
+                        console.log('UI: Got dataUrl, starting download...');
                         const filename = `render-${Date.now()}.png`;
                         renderCameraActions.saveImage(dataUrl, filename);
-                        console.log(`🎬 UI: Download initiated for ${filename}`);
+                        console.log(`UI: Download initiated for ${filename}`);
                       } else {
-                        console.error('🎬 UI: Capture failed - no data returned');
+                        console.error('UI: Capture failed - no data returned');
                         alert('Capture failed - please try again');
                       }
                     } catch (error) {
-                      console.error('🎬 UI: Capture error:', error);
+                      console.error('UI: Capture error:', error);
                       alert('Error during capture - please try again');
                     }
                   }}
@@ -1186,7 +1216,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
                       const mainCamera = scene.cameras.find(cam => cam.name !== 'renderCamera');
                       if (mainCamera) {
                         scene.activeCamera = mainCamera;
-                        console.log('🎬 Forced exit from render camera view');
+                        console.log('Forced exit from render camera view');
                       }
                     }
                   }}

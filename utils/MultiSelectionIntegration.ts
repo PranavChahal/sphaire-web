@@ -50,7 +50,7 @@ export class MultiSelectionManager {
     this.canvas = canvas;
     
     this.setupEventListeners();
-    console.log('🎯 MultiSelection: Manager initialized');
+    console.log('MultiSelection: Manager initialized');
   }
 
   /**
@@ -294,7 +294,7 @@ export class MultiSelectionManager {
       }
       
       this.notifySelectionChanged();
-      console.log(`🎯 MultiSelection: ${addToSelection ? 'Toggled' : 'Selected'} mesh: ${mesh.name}`);
+      console.log(`MultiSelection: ${addToSelection ? 'Toggled' : 'Selected'} mesh: ${mesh.name}`);
     } else if (!addToSelection) {
       // Clear selection if clicking on empty space
       this.clearSelection();
@@ -335,7 +335,7 @@ export class MultiSelectionManager {
    */
   setSelectableMeshes(meshes: AbstractMesh[]): void {
     this.selectableMeshes = [...meshes];
-    console.log(`🎯 MultiSelection: Set ${meshes.length} selectable meshes`);
+    console.log(`MultiSelection: Set ${meshes.length} selectable meshes`);
   }
 
   /**
@@ -368,7 +368,7 @@ export class MultiSelectionManager {
   clearSelection(): void {
     this.selectedMeshes.clear();
     this.notifySelectionChanged();
-    console.log('🎯 MultiSelection: Selection cleared');
+    console.log('MultiSelection: Selection cleared');
   }
 
   /**
@@ -379,7 +379,7 @@ export class MultiSelectionManager {
       this.selectedMeshes.add(mesh.uniqueId.toString());
     });
     this.notifySelectionChanged();
-    console.log(`🎯 MultiSelection: Selected all ${this.selectableMeshes.length} meshes`);
+    console.log(`MultiSelection: Selected all ${this.selectableMeshes.length} meshes`);
   }
 
   /**
@@ -396,7 +396,7 @@ export class MultiSelectionManager {
     
     this.selectedMeshes = newSelection;
     this.notifySelectionChanged();
-    console.log('🎯 MultiSelection: Selection inverted');
+    console.log('MultiSelection: Selection inverted');
   }
 
   /**
@@ -431,7 +431,7 @@ export class MultiSelectionManager {
     this.selectionCallbacks = [];
     this.selectableMeshes = [];
     
-    console.log('🧹 MultiSelection: Manager disposed');
+    console.log('MultiSelection: Manager disposed');
   }
 }
 

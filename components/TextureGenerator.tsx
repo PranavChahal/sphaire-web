@@ -64,17 +64,16 @@ const TextureGenerator: React.FC<TextureGeneratorProps> = ({ onTextureGenerated,
 
   const applyPBRToSelectedMesh = async () => {
     if (!pbrTextures || !scene) return;
-    
-    // Get the currently selected mesh
-    const selectedMesh = selectedMeshes && selectedMeshes.length > 0 ? selectedMeshes[0] : null;
-    
-    if (!selectedMesh) {
-      setError('Please select a mesh to apply the PBR material to');
+    const meshes = Array.isArray(selectedMeshes) ? selectedMeshes : [];
+    if (meshes.length === 0) {
+      setError('Please select at least one mesh to apply the PBR material');
       return;
     }
 
     try {
-      await stableMaterialsService.applyPBRMaterialToMesh(selectedMesh, pbrTextures);
+      await Promise.all(
+        meshes.map((m) => stableMaterialsService.applyPBRMaterialToMesh(m, pbrTextures))
+      );
       setError(null);
     } catch (err) {
       setError(`Failed to apply PBR material: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -83,17 +82,16 @@ const TextureGenerator: React.FC<TextureGeneratorProps> = ({ onTextureGenerated,
 
   const applySimpleTextureToSelectedMesh = async () => {
     if (!previewUrl || !scene) return;
-    
-    // Get the currently selected mesh
-    const selectedMesh = selectedMeshes && selectedMeshes.length > 0 ? selectedMeshes[0] : null;
-    
-    if (!selectedMesh) {
-      setError('Please select a mesh to apply the texture to');
+    const meshes = Array.isArray(selectedMeshes) ? selectedMeshes : [];
+    if (meshes.length === 0) {
+      setError('Please select at least one mesh to apply the texture');
       return;
     }
 
     try {
-      await stableMaterialsService.applySimpleTextureToMesh(selectedMesh, previewUrl);
+      await Promise.all(
+        meshes.map((m) => stableMaterialsService.applySimpleTextureToMesh(m, previewUrl))
+      );
       setError(null);
     } catch (err) {
       setError(`Failed to apply texture: ${err instanceof Error ? err.message : 'Unknown error'}`);

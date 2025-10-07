@@ -80,17 +80,19 @@ const useAICommands = (): AICommandHook => {
       // Execute the model code with scene context
       const shapeId = await executeModelCode(code, backend, { scene });
       
+      // DISABLED: useAICommands addShape call causing mesh sync interference
       // Create a shape entry for the store
       // Note: The executeModelCode function should handle the actual mesh creation
       // This is just to track the shape in our store
-      addShape({
-        type: 'custom',
-        position: { x: 0, y: 0, z: 0 },
-        rotation: { x: 0, y: 0, z: 0 },
-        scaling: { x: 1, y: 1, z: 1 },
-        name: `AI Generated Model ${new Date().toLocaleTimeString()}`,
-        color: '#8B5CF6' // Purple theme color
-      });
+      // addShape({
+      //   type: 'custom',
+      //   position: { x: 0, y: 0, z: 0 },
+      //   rotation: { x: 0, y: 0, z: 0 },
+      //   scaling: { x: 1, y: 1, z: 1 },
+      //   name: `AI Generated Model ${new Date().toLocaleTimeString()}`,
+      //   color: '#8B5CF6' // Purple theme color
+      // });
+      console.log('DISABLED: useAICommands addShape call to prevent mesh sync interference');
 
       setStatusMessage('Model created successfully!');
       

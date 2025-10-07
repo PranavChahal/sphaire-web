@@ -4,11 +4,11 @@
  * React hook providing clean integration with UnifiedGizmoSystem
  * Replaces both AdvancedGizmoSystem and useLighting.ts approaches
  * Features:
- * ✅ Single source of truth for all gizmo interactions
- * ✅ React state synchronization 
- * ✅ Automatic cleanup and lifecycle management
- * ✅ Unified undo/redo integration
- * ✅ Type-safe API for mesh and light manipulation
+ * Single source of truth for all gizmo interactions
+ * React state synchronization 
+ * Automatic cleanup and lifecycle management
+ * Unified undo/redo integration
+ * Type-safe API for mesh and light manipulation
  */
 
 import { useCallback, useRef, useEffect, useState } from 'react';
@@ -64,7 +64,7 @@ export const useUnifiedGizmo = (
   options: UseUnifiedGizmoOptions = {}
 ): UseUnifiedGizmoReturn => {
   
-  // ✅ BULLETPROOF GIZMO LIFECYCLE MANAGEMENT - EXPERT PATTERN
+  // BULLETPROOF GIZMO LIFECYCLE MANAGEMENT - EXPERT PATTERN
   // Core state
   const gizmoSystemRef = useRef<UnifiedGizmoSystem | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -73,7 +73,7 @@ export const useUnifiedGizmo = (
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   
-  // 🎯 EXPERT PATTERN: Initialize GizmoManager ONCE with stable dependencies
+  // EXPERT PATTERN: Initialize GizmoManager ONCE with stable dependencies
   useEffect(() => {
     if (!scene || !camera || !canvas) {
       console.log('⏳ useUnifiedGizmo: Waiting for scene/camera/canvas...');
@@ -81,17 +81,17 @@ export const useUnifiedGizmo = (
     }
     
     if (gizmoSystemRef.current) {
-      console.log('✅ useUnifiedGizmo: System already initialized');
+      console.log('useUnifiedGizmo: System already initialized');
       return;
     }
     
-    console.log('🚀 useUnifiedGizmo: Initializing GizmoManager ONCE...');
+    console.log('useUnifiedGizmo: Initializing GizmoManager ONCE...');
     
     try {
       // Create stable callbacks that are setup ONCE and persist
       const callbacks: GizmoCallbacks = {
         onSelectionChanged: (object) => {
-          console.log('🎯 Selection changed to:', object?.name || 'null');
+          console.log('Selection changed to:', object?.name || 'null');
           // Defer state update to prevent re-render during interaction
           requestAnimationFrame(() => {
             setCurrentSelection(object);
@@ -99,18 +99,18 @@ export const useUnifiedGizmo = (
           });
         },
         onModeChanged: (mode) => {
-          console.log('🔄 Mode changed to:', mode);
+          console.log('Mode changed to:', mode);
           requestAnimationFrame(() => {
             setCurrentMode(mode);
             options.onModeChanged?.(mode);
           });
         },
         onTransformStart: (object, mode) => {
-          console.log('🎨 Transform START:', object.name, mode);
+          console.log('Transform START:', object.name, mode);
           options.onTransformStart?.(object, mode);
         },
         onTransformEnd: (object, mode, prevState, newState) => {
-          console.log('✅ Transform END:', object.name, mode);
+          console.log('Transform END:', object.name, mode);
           
           // CRITICAL: Defer ALL state updates until AFTER drag completes
           requestAnimationFrame(() => {
@@ -141,7 +141,7 @@ export const useUnifiedGizmo = (
         callbacks
       );
       
-      console.log('✅ UnifiedGizmoSystem created with stable observers');
+      console.log('UnifiedGizmoSystem created with stable observers');
       setIsInitialized(true);
       
       // Initial state sync
@@ -149,21 +149,21 @@ export const useUnifiedGizmo = (
       setCanRedo(gizmoSystemRef.current.canRedo);
       
     } catch (error) {
-      console.error('❌ Failed to create UnifiedGizmoSystem:', error);
+      console.error('Failed to create UnifiedGizmoSystem:', error);
       gizmoSystemRef.current = null;
       setIsInitialized(false);
     }
     
-    // ✅ EXPERT PATTERN: Cleanup ONLY on unmount, never on state changes
+    // EXPERT PATTERN: Cleanup ONLY on unmount, never on state changes
     return () => {
       if (gizmoSystemRef.current) {
-        console.log('🗑️ useUnifiedGizmo: Disposing on unmount ONLY');
+        console.log('useUnifiedGizmo: Disposing on unmount ONLY');
         gizmoSystemRef.current.dispose();
         gizmoSystemRef.current = null;
         setIsInitialized(false);
       }
     };
-  }, [scene]); // ✅ BULLETPROOF: Only scene dependency (camera is stable after scene init)
+  }, [scene]); // BULLETPROOF: Only scene dependency (camera is stable after scene init)
   
   // =============================================================================
   // CORE API METHODS
@@ -182,30 +182,30 @@ export const useUnifiedGizmo = (
       callStack: new Error().stack?.split('\n').slice(1, 4).join('\n')
     };
     
-    console.log('🚀 DEBUGGING: useUnifiedGizmo.selectObject() called:', debugInfo);
+    console.log('DEBUGGING: useUnifiedGizmo.selectObject() called:', debugInfo);
     
     if (!gizmoSystemRef.current) {
-      console.error('❌ DEBUGGING: selectObject FAILED - System not initialized:', debugInfo);
+      console.error('DEBUGGING: selectObject FAILED - System not initialized:', debugInfo);
       return;
     }
     
     try {
-      console.log('🎯 DEBUGGING: Calling gizmoSystemRef.current.select()...');
+      console.log('DEBUGGING: Calling gizmoSystemRef.current.select()...');
       gizmoSystemRef.current.select(object);
       
-      console.log('🔄 DEBUGGING: Updating React state after selection...');
+      console.log('DEBUGGING: Updating React state after selection...');
       setCurrentSelection(object);
       
-      console.log('✅ DEBUGGING: selectObject completed successfully at', Date.now());
+      console.log('DEBUGGING: selectObject completed successfully at', Date.now());
     } catch (error) {
-      console.error('🚨 DEBUGGING: Error during selectObject:', error);
-      console.error('🚨 DEBUGGING: Error stack:', (error as Error).stack);
+      console.error('DEBUGGING: Error during selectObject:', error);
+      console.error('DEBUGGING: Error stack:', (error as Error).stack);
     }
   }, [isInitialized, currentSelection, scene, camera, canvas]);
   
   const setMode = useCallback((mode: GizmoMode) => {
     if (!gizmoSystemRef.current) {
-      console.warn('⚠️ useUnifiedGizmo: System not initialized, cannot set mode');
+      console.warn('useUnifiedGizmo: System not initialized, cannot set mode');
       return;
     }
     
@@ -263,14 +263,14 @@ export const useUnifiedGizmo = (
   
   const activateLightGizmo = useCallback((lightName: string, gizmoMode: 'position' | 'rotation') => {
     if (!scene || !gizmoSystemRef.current) {
-      console.warn('⚠️ useUnifiedGizmo: Cannot activate light gizmo, system not ready');
+      console.warn('useUnifiedGizmo: Cannot activate light gizmo, system not ready');
       return;
     }
     
     // Find the light by name
     const light = scene.getLightByName(lightName);
     if (!light) {
-      console.warn(`⚠️ useUnifiedGizmo: Light '${lightName}' not found`);
+      console.warn(`useUnifiedGizmo: Light '${lightName}' not found`);
       return;
     }
     
@@ -278,7 +278,7 @@ export const useUnifiedGizmo = (
     selectObject(light);
     setMode(gizmoMode);
     
-    console.log(`✅ useUnifiedGizmo: Activated ${gizmoMode} gizmo for light: ${lightName}`);
+    console.log(`useUnifiedGizmo: Activated ${gizmoMode} gizmo for light: ${lightName}`);
   }, [scene, selectObject, setMode]);
   
   const hideLightHelpers = useCallback(() => {

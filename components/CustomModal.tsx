@@ -48,21 +48,21 @@ const CustomModal: React.FC<ModalProps> = ({
     switch (type) {
       case 'success':
         return {
-          icon: '✅',
+          icon: '',
           iconColor: 'text-green-400',
           buttonBg: 'bg-green-600 hover:bg-green-700',
           borderColor: 'border-green-400/30'
         };
       case 'warning':
         return {
-          icon: '⚠️',
+          icon: '',
           iconColor: 'text-yellow-400',
           buttonBg: 'bg-yellow-600 hover:bg-yellow-700',
           borderColor: 'border-yellow-400/30'
         };
       case 'error':
         return {
-          icon: '❌',
+          icon: '',
           iconColor: 'text-red-400',
           buttonBg: 'bg-red-600 hover:bg-red-700',
           borderColor: 'border-red-400/30'

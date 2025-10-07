@@ -216,7 +216,7 @@ const TexturePanel: React.FC = () => {
 
       {/* Help Text */}
       <div className="text-xs text-gray-400 space-y-1">
-        <p>💡 <strong>Tips:</strong></p>
+        <p><strong>Tips:</strong></p>
         <ul className="list-disc list-inside space-y-1 ml-4">
           <li>Be specific about materials (metal, wood, fabric, stone)</li>
           <li>Include surface details (smooth, rough, scratched, polished)</li>

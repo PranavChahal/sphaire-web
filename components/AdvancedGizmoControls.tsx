@@ -2,11 +2,11 @@
  * ADVANCED GIZMO CONTROLS UI COMPONENT
  * 
  * Production-ready UI for the new AdvancedGizmoSystem with:
- * ✅ Move/Scale/Rotate mode selection
- * ✅ Coordinate space toggle (Local/World)
- * ✅ Snap settings controls
- * ✅ Multi-selection support indicators
- * ✅ Sphaire design system integration
+ * Move/Scale/Rotate mode selection
+ * Coordinate space toggle (Local/World)
+ * Snap settings controls
+ * Multi-selection support indicators
+ * Sphaire design system integration
  */
 
 import React from 'react';
@@ -44,7 +44,7 @@ const GIZMO_MODES: GizmoModeConfig[] = [
   {
     mode: 'rotation',
     label: 'Rotate',
-    icon: '🔄',
+    icon: '',
     description: 'Rotate objects around axes',
     hotkey: 'E'
   },
@@ -58,7 +58,7 @@ const GIZMO_MODES: GizmoModeConfig[] = [
   {
     mode: 'boundingBox',
     label: 'Multi',
-    icon: '📦',
+    icon: '',
     description: 'Multi-selection bounding box',
     hotkey: 'T'
   }
@@ -126,7 +126,7 @@ export const AdvancedGizmoControls: React.FC<AdvancedGizmoControlsProps> = ({
           margin: 0,
           textShadow: '0 0 8px rgba(255, 105, 180, 0.5)'
         }}>
-          🎯 Transform Controls
+          Transform Controls
         </h3>
         
         {selectedMeshCount > 0 && (
@@ -303,7 +303,7 @@ export const AdvancedGizmoControls: React.FC<AdvancedGizmoControlsProps> = ({
           }}
         >
           <span>
-            {snapEnabled ? '🧲' : '🎯'} {snapEnabled ? 'SNAP ON' : 'FREE MOVE'}
+            {snapEnabled ? '' : ''} {snapEnabled ? 'SNAP ON' : 'FREE MOVE'}
           </span>
           <span style={{ fontSize: '10px', opacity: 0.7 }}>
             {snapEnabled ? 'Precise' : 'Smooth'}
@@ -329,8 +329,8 @@ export const AdvancedGizmoControls: React.FC<AdvancedGizmoControlsProps> = ({
         {isEnabled 
           ? (currentMode === 'none' 
               ? '⭐ Ready - Select objects to transform' 
-              : `✅ ${GIZMO_MODES.find(m => m.mode === currentMode)?.label || currentMode} mode active`)
-          : '⚠️ Transform controls disabled'}
+              : `${GIZMO_MODES.find(m => m.mode === currentMode)?.label || currentMode} mode active`)
+          : 'Transform controls disabled'}
       </div>
 
       {/* Hotkey Help */}
@@ -342,7 +342,7 @@ export const AdvancedGizmoControls: React.FC<AdvancedGizmoControlsProps> = ({
         paddingTop: '8px',
         marginTop: '4px'
       }}>
-        💡 Hotkeys: W (Move) • E (Rotate) • R (Scale) • T (Multi)
+        Hotkeys: W (Move) • E (Rotate) • R (Scale) • T (Multi)
       </div>
     </div>
   );

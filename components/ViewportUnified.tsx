@@ -16,11 +16,11 @@
  * - Comprehensive error handling and recovery
  * 
  * This component guarantees:
- * ✅ No flash-then-blank issues
- * ✅ Persistent grid and object visibility
- * ✅ Stable 60 FPS rendering
- * ✅ Zero architectural conflicts
- * ✅ Perfect Babylon.js 8.x compatibility
+ * No flash-then-blank issues
+ * Persistent grid and object visibility
+ * Stable 60 FPS rendering
+ * Zero architectural conflicts
+ * Perfect Babylon.js 8.x compatibility
  * ============================================================================
  */
 
@@ -139,7 +139,7 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
           const newMesh = createMeshForShape(shape, scene);
           if (newMesh) {
             shapeMeshesRef.current.set(shape.id, newMesh);
-            console.log(`✅ MESH CREATION: Created mesh for ${shape.type}: ${shape.id}`);
+            console.log(`MESH CREATION: Created mesh for ${shape.type}: ${shape.id}`);
           }
         } else {
           // Update existing mesh
@@ -271,7 +271,7 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
   
   // Multi-Object Selection (USER'S MARQUEE + SHIFT+CLICK GUIDANCE)
   const handleMeshSelection = (pickedMesh: AbstractMesh | null, isShiftHeld: boolean = false) => {
-    console.log('🎯 SELECTION: handleMeshSelection called', { 
+    console.log('SELECTION: handleMeshSelection called', { 
       mesh: pickedMesh?.name, 
       hasMetadata: !!pickedMesh?.metadata?.shapeId,
       isShiftHeld 
@@ -280,7 +280,7 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
     if (!pickedMesh || !pickedMesh.metadata?.shapeId) {
       // Clear selection if clicking empty space and not holding shift (user's guidance)
       if (!isShiftHeld) {
-        console.log('🗑️ SELECTION: Clearing all selections (clicked empty space)');
+        console.log('SELECTION: Clearing all selections (clicked empty space)');
         setSelectedMeshes(new Set());
         setSelectedMesh(null);
         if (gizmoManagerRef.current) {
@@ -294,7 +294,7 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
     
     if (isShiftHeld) {
       // Multi-select mode: toggle mesh in/out of selection (user's guidance)
-      console.log(`🔄 SELECTION: Shift+click - toggling mesh ${shapeId}`);
+      console.log(`SELECTION: Shift+click - toggling mesh ${shapeId}`);
       setSelectedMeshes(prev => {
         const newSelection = new Set(prev);
         if (newSelection.has(shapeId)) {
@@ -308,7 +308,7 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
       });
     } else {
       // Single select mode: replace selection (user's guidance)
-      console.log(`🎯 SELECTION: Single click - selecting only ${shapeId}`);
+      console.log(`SELECTION: Single click - selecting only ${shapeId}`);
       setSelectedMeshes(new Set([shapeId]));
       setSelectedMesh(pickedMesh);
       
@@ -318,7 +318,7 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
       }
     }
     
-    console.log(`✅ SELECTION: Updated - ${selectedMeshes.size} meshes selected`);
+    console.log(`SELECTION: Updated - ${selectedMeshes.size} meshes selected`);
   };
 
   /**
@@ -336,7 +336,7 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
       // Patch wipeCaches with bulletproof implementation
       if (!(engine as any).wipeCaches) {
         (engine as any).wipeCaches = function(resetTextures?: boolean) {
-          console.log('🧹 [UNIFIED PATCH] wipeCaches called - bulletproof implementation');
+          console.log('[UNIFIED PATCH] wipeCaches called - bulletproof implementation');
           try {
             // Clear all internal caches safely
             if (this._currentEffect !== undefined) this._currentEffect = null;
@@ -357,9 +357,9 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
               }
             }
             
-            console.log('✅ [UNIFIED PATCH] wipeCaches completed successfully');
+            console.log('[UNIFIED PATCH] wipeCaches completed successfully');
           } catch (error) {
-            console.warn('⚠️ [UNIFIED PATCH] wipeCaches warning (non-critical):', error);
+            console.warn('[UNIFIED PATCH] wipeCaches warning (non-critical):', error);
           }
           return this;
         };
@@ -379,16 +379,16 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
             const height = this.getRenderHeight();
             return height > 0 ? width / height : 1.0;
           } catch (e) {
-            console.warn('🔧 [UNIFIED PATCH] getAspectRatio fallback:', e);
+            console.warn('[UNIFIED PATCH] getAspectRatio fallback:', e);
             return 1.0;
           }
         };
       }
       
-      console.log('✅ UNIFIED VIEWPORT: Engine patches applied successfully');
+      console.log('UNIFIED VIEWPORT: Engine patches applied successfully');
       
     } catch (error) {
-      console.error('🚨 UNIFIED VIEWPORT: Engine patching failed:', error);
+      console.error('UNIFIED VIEWPORT: Engine patching failed:', error);
       throw error;
     }
   }, []);
@@ -400,11 +400,11 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
    */
   const startUnifiedRenderLoop = useCallback((scene: Scene) => {
     if (isRenderingRef.current) {
-      console.log('⚠️ UNIFIED VIEWPORT: Render loop already active, skipping');
+      console.log('UNIFIED VIEWPORT: Render loop already active, skipping');
       return;
     }
     
-    console.log('🚀 UNIFIED VIEWPORT: Starting bulletproof render loop...');
+    console.log('UNIFIED VIEWPORT: Starting bulletproof render loop...');
     isRenderingRef.current = true;
     lastRenderTimeRef.current = 0;
     
@@ -426,7 +426,7 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
         // Schedule next frame
         renderLoopIdRef.current = requestAnimationFrame(renderFrame);
       } catch (error) {
-        console.error('🚨 UNIFIED VIEWPORT: Render error:', error);
+        console.error('UNIFIED VIEWPORT: Render error:', error);
         // Continue rendering despite errors to prevent crash
         renderLoopIdRef.current = requestAnimationFrame(renderFrame);
       }
@@ -434,7 +434,7 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
     
     // Start the render loop
     renderLoopIdRef.current = requestAnimationFrame(renderFrame);
-    console.log('✅ UNIFIED VIEWPORT: Render loop started successfully');
+    console.log('UNIFIED VIEWPORT: Render loop started successfully');
     
   }, []);
 
@@ -452,7 +452,7 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
       renderLoopIdRef.current = null;
     }
     
-    console.log('✅ UNIFIED VIEWPORT: Render loop stopped cleanly');
+    console.log('UNIFIED VIEWPORT: Render loop stopped cleanly');
   }, []);
 
   /**
@@ -462,11 +462,11 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
    */
   const createPersistentMeshes = useCallback(() => {
     if (!sceneRef.current || !isInitialized) {
-      console.log('⚠️ UNIFIED VIEWPORT: Scene not ready for mesh creation');
+      console.log('UNIFIED VIEWPORT: Scene not ready for mesh creation');
       return;
     }
     
-    console.log('🎯 UNIFIED VIEWPORT: Creating persistent meshes...', shapes.length);
+    console.log('UNIFIED VIEWPORT: Creating persistent meshes...', shapes.length);
     
     const currentShapeIds = new Set(shapes.map(shape => shape.id));
     const existingMeshIds = new Set(shapeMeshesRef.current.keys());
@@ -474,7 +474,7 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
     // Remove obsolete meshes ONLY when necessary
     for (const [meshId, mesh] of shapeMeshesRef.current.entries()) {
       if (!currentShapeIds.has(meshId)) {
-        console.log('🗑️ UNIFIED VIEWPORT: Removing obsolete mesh:', meshId);
+        console.log('UNIFIED VIEWPORT: Removing obsolete mesh:', meshId);
         if (!mesh.isDisposed()) {
           mesh.dispose();
         }
@@ -546,14 +546,14 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
           
           // Store mesh reference
           shapeMeshesRef.current.set(shape.id, mesh);
-          console.log('✅ UNIFIED VIEWPORT: Created persistent mesh:', shape.id);
+          console.log('UNIFIED VIEWPORT: Created persistent mesh:', shape.id);
         }
       } catch (error) {
-        console.error('🚨 UNIFIED VIEWPORT: Error creating mesh:', shape.id, error);
+        console.error('UNIFIED VIEWPORT: Error creating mesh:', shape.id, error);
       }
     });
     
-    console.log('✅ UNIFIED VIEWPORT: Persistent mesh management complete');
+    console.log('UNIFIED VIEWPORT: Persistent mesh management complete');
   }, [shapes, isInitialized]);
 
   /**
@@ -567,17 +567,17 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
     }
     
     if (engineRef.current || sceneRef.current) {
-      console.log('⚠️ UNIFIED VIEWPORT: Already initialized, skipping');
+      console.log('UNIFIED VIEWPORT: Already initialized, skipping');
       return;
     }
     
-    console.log('🚀 UNIFIED VIEWPORT: Starting SINGLE Babylon.js initialization...');
+    console.log('UNIFIED VIEWPORT: Starting SINGLE Babylon.js initialization...');
     
     try {
       // ========================================================================
       // STEP 1: CREATE SINGLE ENGINE WITH BULLETPROOF PATCHES
       // ========================================================================
-      console.log('🔧 UNIFIED VIEWPORT: Creating THE ONLY engine...');
+      console.log('UNIFIED VIEWPORT: Creating THE ONLY engine...');
       const engine = new Engine(canvasRef.current, true, {
         preserveDrawingBuffer: true,
         stencil: true,
@@ -599,13 +599,17 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
       scene.clearColor = new Color4(0.02, 0.01, 0.04, 1.0); // Dark purple
       scene.ambientColor = new Color3(0.15, 0.12, 0.2);
       
+      // CRITICAL: Fix for 3D model visibility issues
+      scene.useRightHandedSystem = true; // Use right-handed system for consistent normals
+      scene.skipFrustumClipping = true; // Prevent clipping of geometry
+      
       sceneRef.current = scene;
       setScene(scene);
       
       // ========================================================================
       // STEP 3: CREATE CAMERA WITH BULLETPROOF CONTROLS
       // ========================================================================
-      console.log('📷 UNIFIED VIEWPORT: Creating bulletproof camera...');
+      console.log('UNIFIED VIEWPORT: Creating bulletproof camera...');
       const camera = new ArcRotateCamera(
         'unified-camera',
         -Math.PI / 2,    // alpha
@@ -633,21 +637,43 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
       camera.lowerBetaLimit = 0.1;     // Allow almost top-down view
       camera.upperBetaLimit = Math.PI - 0.1; // Allow almost bottom-up view
       
-      console.log('🎯 CAMERA FIX: Z-axis visibility enabled - near:', camera.minZ, 'far:', camera.maxZ);
-      console.log('🔄 CAMERA FIX: Full rotation enabled for complete Z-axis access');
+      console.log('CAMERA FIX: Z-axis visibility enabled - near:', camera.minZ, 'far:', camera.maxZ);
+      console.log('CAMERA FIX: Full rotation enabled for complete Z-axis access');
       
       cameraRef.current = camera;
       
       // ========================================================================
       // STEP 4: CREATE LIGHTING SYSTEM
       // ========================================================================
-      console.log('💡 UNIFIED VIEWPORT: Creating lighting system...');
+      console.log('UNIFIED VIEWPORT: Creating lighting system...');
       const hemisphericLight = new HemisphericLight('unified-hemispheric', new Vector3(0, 1, 0), scene);
       hemisphericLight.intensity = 0.4;
       hemisphericLight.diffuse = new Color3(0.8, 0.9, 1.0);
       
       const directionalLight = new DirectionalLight('unified-directional', new Vector3(-1, -1, -1), scene);
       directionalLight.intensity = 0.6;
+      
+      // ========================================================================
+      // STEP 5: GLOBAL MATERIAL SETTINGS - FIX VISIBILITY ISSUES
+      // ========================================================================
+      console.log('UNIFIED VIEWPORT: Setting up global material observer to fix visibility issues...');
+      // Configure global material settings to ensure all faces are visible from all angles
+      scene.onNewMaterialAddedObservable.add((material) => {
+        if (material instanceof StandardMaterial) {
+          console.log('MATERIAL FIX: Applying visibility settings to material:', material.name);
+          material.backFaceCulling = false;  // Disable backface culling to see both sides
+          material.twoSidedLighting = true;  // Enable two-sided lighting for better visibility
+        }
+      });
+      
+      // Apply settings to any existing materials
+      scene.materials.forEach(material => {
+        if (material instanceof StandardMaterial) {
+          console.log('MATERIAL FIX: Applying visibility settings to existing material:', material.name);
+          material.backFaceCulling = false;
+          material.twoSidedLighting = true;
+        }
+      });
       directionalLight.diffuse = new Color3(1.0, 0.95, 0.9);
       
       // ========================================================================
@@ -674,13 +700,13 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
       
       gridRef.current = ground; // Store reference to ground, not material
       
-      console.log('✅ GRID FIXED: Using user guidance - transparent background with visible lines');
-      console.log('🎯 Grid settings: majorUnit=10, minorVisibility=0.45, opacity=0 (background), renderGroup=0');
+      console.log('GRID FIXED: Using user guidance - transparent background with visible lines');
+      console.log('Grid settings: majorUnit=10, minorVisibility=0.45, opacity=0 (background), renderGroup=0');
       
       // ========================================================================
       // STEP 6: CREATE GIZMO SYSTEM
       // ========================================================================
-      console.log('🎮 UNIFIED VIEWPORT: Creating bulletproof gizmo system...');
+      console.log('UNIFIED VIEWPORT: Creating bulletproof gizmo system...');
       
       // Create utility layer for gizmos
       const utilityLayerRenderer = UtilityLayerRenderer.DefaultUtilityLayer;
@@ -696,7 +722,7 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
       // ========================================================================
       // STEP 7: SETUP INTERACTION HANDLERS
       // ========================================================================
-      console.log('🖱️ UNIFIED VIEWPORT: Setting up interaction handlers...');
+      console.log('UNIFIED VIEWPORT: Setting up interaction handlers...');
       scene.onPointerObservable.add((pointerInfo) => {
         if (pointerInfo.pickInfo?.hit) {
           const pickedMesh = pointerInfo.pickInfo.pickedMesh;
@@ -727,12 +753,12 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
       
       // Connect undo/redo system to store
       setUndoRedoSystem(undoRedoSystem);
-      console.log('🔄 UNIFIED VIEWPORT: Undo/Redo system connected to store');
+      console.log('UNIFIED VIEWPORT: Undo/Redo system connected to store');
       
       // ========================================================================
       // STEP 9: SETUP MESH CREATION SYSTEM FOR STORE CHANGES
       // ========================================================================
-      console.log('🔧 UNIFIED VIEWPORT: Setting up mesh creation system...');
+      console.log('UNIFIED VIEWPORT: Setting up mesh creation system...');
       createMeshesFromStoreShapes();
       
       // ========================================================================
@@ -742,7 +768,7 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
         if (pointerInfo.pickInfo && pointerInfo.type === PointerEventTypes.POINTERDOWN) {
           // Detect Shift key state from the pointer event (user's guidance)
           const isShiftHeld = pointerInfo.event?.shiftKey || isShiftPressed;
-          console.log('🔍 POINTER: Click detected', {
+          console.log('POINTER: Click detected', {
             mesh: pointerInfo.pickInfo.pickedMesh?.name,
             shiftFromEvent: pointerInfo.event?.shiftKey,
             shiftFromState: isShiftPressed,
@@ -789,7 +815,7 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
       
       document.addEventListener('keydown', handleKeyDown);
       document.addEventListener('keyup', handleKeyUp);
-      console.log('⌨️ UNIFIED VIEWPORT: Keyboard shortcuts registered (Ctrl+Z/Cmd+Z for undo, Ctrl+Shift+Z/Cmd+Shift+Z for redo, Shift for multi-select)');
+      console.log('UNIFIED VIEWPORT: Keyboard shortcuts registered (Ctrl+Z/Cmd+Z for undo, Ctrl+Shift+Z/Cmd+Shift+Z for redo, Shift for multi-select)');
       
       // Store cleanup functions for later use
       const cleanupFunctions = {
@@ -804,10 +830,10 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
       cleanupRef.current.keyboard = cleanupFunctions.keyboard;
       cleanupRef.current.resize = cleanupFunctions.resize;
       
-      console.log('🎉 UNIFIED VIEWPORT: THE ONLY Babylon.js system is ready!');
+      console.log('UNIFIED VIEWPORT: THE ONLY Babylon.js system is ready!');
       
     } catch (error) {
-      console.error('🚨 UNIFIED VIEWPORT: Initialization failed:', error);
+      console.error('UNIFIED VIEWPORT: Initialization failed:', error);
       setError(`Initialization failed: ${error}`);
       throw error;
     }
@@ -819,7 +845,7 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
    * ============================================================================
    */
   useEffect(() => {
-    console.log('🎬 UNIFIED VIEWPORT: Mounting THE ONLY viewport component...');
+    console.log('UNIFIED VIEWPORT: Mounting THE ONLY viewport component...');
     
     let mounted = true;
     
@@ -830,7 +856,7 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
         await initializeUnifiedBabylonSystem();
       } catch (error) {
         if (mounted) {
-          console.error('🚨 UNIFIED VIEWPORT: Initialization failed:', error);
+          console.error('UNIFIED VIEWPORT: Initialization failed:', error);
           setError(`Failed to initialize: ${error}`);
         }
       }
@@ -840,7 +866,7 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
     
     // Cleanup function
     return () => {
-      console.log('🧹 UNIFIED VIEWPORT: Cleaning up THE ONLY viewport component...');
+      console.log('UNIFIED VIEWPORT: Cleaning up THE ONLY viewport component...');
       mounted = false;
       
       // Stop render loop
@@ -866,7 +892,7 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
         cleanupRef.current.keyboard();
       }
       
-      console.log('🧹 UNIFIED VIEWPORT: Cleanup completed (including keyboard shortcuts and resize handlers)');
+      console.log('UNIFIED VIEWPORT: Cleanup completed (including keyboard shortcuts and resize handlers)');
     };
   }, []); // CRITICAL: Empty dependency array - NEVER re-run
   
@@ -875,15 +901,15 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
   // ============================================================================
   useEffect(() => {
     if (isInitialized && sceneRef.current) {
-      console.log(`🚀 INSTANT CREATION: Store changed - ${shapes.length} shapes, scene ready`);
+      console.log(`INSTANT CREATION: Store changed - ${shapes.length} shapes, scene ready`);
       console.log('Shapes in store:', shapes.map(s => ({ id: s.id, type: s.type, position: s.position })));
       
       // Immediate mesh creation when addShape() fires (user's guidance)
       try {
         createMeshesFromStoreShapes();
-        console.log(`✅ INSTANT CREATION: Successfully processed ${shapes.length} shapes`);
+        console.log(`INSTANT CREATION: Successfully processed ${shapes.length} shapes`);
       } catch (error) {
-        console.error('🚨 INSTANT CREATION: Error during mesh creation:', error);
+        console.error('INSTANT CREATION: Error during mesh creation:', error);
       }
     } else {
       console.log(`⏸️ INSTANT CREATION: Waiting - initialized: ${isInitialized}, scene: ${!!sceneRef.current}`);
@@ -892,7 +918,7 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
   
   // Debug logging for shape changes
   useEffect(() => {
-    console.log('🔍 STORE DEBUG: Shapes array changed:', {
+    console.log('STORE DEBUG: Shapes array changed:', {
       count: shapes.length,
       shapes: shapes.map(s => ({ id: s.id, type: s.type }))
     });
@@ -903,7 +929,7 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
   // ============================================================================
   useEffect(() => {
     if (selectedMeshes.size > 0) {
-      console.log(`🎯 SELECTION: ${selectedMeshes.size} meshes selected:`, Array.from(selectedMeshes));
+      console.log(`SELECTION: ${selectedMeshes.size} meshes selected:`, Array.from(selectedMeshes));
       // Visual feedback for multi-selected meshes
       selectedMeshes.forEach(shapeId => {
         const mesh = shapeMeshesRef.current.get(shapeId);
@@ -930,7 +956,7 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
    */
   useEffect(() => {
     if (isInitialized) {
-      console.log('🔄 UNIFIED VIEWPORT: Syncing shapes...');
+      console.log('UNIFIED VIEWPORT: Syncing shapes...');
       createPersistentMeshes();
     }
   }, [shapes, isInitialized, createPersistentMeshes]);
@@ -965,7 +991,7 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
       // Attach to selected mesh
       gizmoManager.attachToMesh(selectedMesh);
       
-      console.log(`🎮 UNIFIED VIEWPORT: ${gizmoMode} gizmo attached to`, selectedMesh.name);
+      console.log(`UNIFIED VIEWPORT: ${gizmoMode} gizmo attached to`, selectedMesh.name);
     }
   }, [selectedMesh, gizmoMode]);
 
@@ -1085,7 +1111,7 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
           pointerEvents: 'none',
           zIndex: 1000
         }}>
-          ✅ UNIFIED VIEWPORT - Zero Conflicts
+          UNIFIED VIEWPORT - Zero Conflicts
         </div>
       )}
       
@@ -1125,7 +1151,7 @@ export const ViewportUnified: React.FC<ViewportUnifiedProps> = ({
           maxWidth: '400px',
           textAlign: 'center'
         }}>
-          🚨 Error: {error}
+          Error: {error}
         </div>
       )}
     </div>

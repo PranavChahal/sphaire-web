@@ -64,7 +64,7 @@ export const BabylonProvider: React.FC<{ children: React.ReactNode }> = ({ child
     cameraInstance: Camera, 
     canvasInstance: HTMLCanvasElement
   ) => {
-    console.log('🚀 BabylonProvider: Initializing Babylon.js systems...');
+    console.log('BabylonProvider: Initializing Babylon.js systems...');
     
     setEngine(engineInstance);
     setScene(sceneInstance);
@@ -75,7 +75,7 @@ export const BabylonProvider: React.FC<{ children: React.ReactNode }> = ({ child
     manager.setupKeyboardShortcuts();
     setEditControlManager(manager);
     
-    console.log('✅ BabylonProvider: Babylon.js systems initialized');
+    console.log('BabylonProvider: Babylon.js systems initialized');
   }, []);
   const selectMesh = useCallback((mesh: AbstractMesh, addToSelection = false) => {
     if (!mesh) return;
@@ -93,17 +93,17 @@ export const BabylonProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
     });
     
-    console.log(`🎯 Selected mesh: ${mesh.name}${addToSelection ? ' (added to selection)' : ''}`);
+    console.log(`Selected mesh: ${mesh.name}${addToSelection ? ' (added to selection)' : ''}`);
   }, []);
 
   const deselectMesh = useCallback((mesh: AbstractMesh) => {
     setSelectedMeshes(prev => prev.filter(m => m.uniqueId !== mesh.uniqueId));
-    console.log(`🎯 Deselected mesh: ${mesh.name}`);
+    console.log(`Deselected mesh: ${mesh.name}`);
   }, []);
 
   const clearSelection = useCallback(() => {
     setSelectedMeshes([]);
-    console.log('🎯 Selection cleared');
+    console.log('Selection cleared');
   }, []);
 
   // Multi-selection methods (following marquee selection patterns)
@@ -152,7 +152,7 @@ export const BabylonProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Cleanup method
   const cleanup = useCallback(() => {
-    console.log('🧹 BabylonProvider: Cleaning up...');
+    console.log('BabylonProvider: Cleaning up...');
     
     if (editControlManager) {
       editControlManager.dispose();
@@ -168,7 +168,7 @@ export const BabylonProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setCamera(null);
     setCanvas(null);
     
-    console.log('✅ BabylonProvider: Cleanup complete');
+    console.log('BabylonProvider: Cleanup complete');
   }, [editControlManager]);
 
   // Context value (following react-babylonjs patterns)

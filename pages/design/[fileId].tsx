@@ -6,7 +6,6 @@ import Head from 'next/head'
 import HeaderPerfect from '../../components/HeaderPerfect'
 import { ViewportProduction } from '../../components/ViewportProduction'
 import Sidebar from '../../components/Sidebar'
-import CodeViewer from '../../components/CodeViewer'
 import VoiceModule from '../../components/VoiceModule'
 import { useUIStore } from '../../store/uiStore'
 import useStore from '../../store/store'
@@ -20,10 +19,7 @@ const DesignFilePage = () => {
   const { fileId } = router.query
   
   // UI Store for sidebar and editor state
-  const { activeTab, editorVisible, setActiveTab, showEditor, hideEditor } = useUIStore()
-  
-  // Code viewer ref for external control
-  const codeViewerRef = React.useRef(null)
+  const { activeTab, setActiveTab } = useUIStore()
   
   // Get store functions for loading saved objects
   const { addShape, addModel, clearShapes } = useStore()
@@ -36,13 +32,6 @@ const DesignFilePage = () => {
     }
   }, [fileId])
   
-  useEffect(() => {
-    if (activeTab === 'code-editor') {
-      showEditor()
-    } else {
-      hideEditor()
-    }
-  }, [activeTab, showEditor, hideEditor])
 
   // File fetching removed - authentication disabled
 
@@ -52,7 +41,7 @@ const DesignFilePage = () => {
    */
   const reconstructImportedModel = async (modelData: any) => {
     try {
-      console.log('🔄 Starting model reconstruction for:', modelData.fileName)
+      console.log('Starting model reconstruction for:', modelData.fileName)
       
       // Import necessary Babylon.js modules
       // Import modules for model loading
@@ -71,13 +60,13 @@ const DesignFilePage = () => {
       }
       const arrayBuffer = bytes.buffer
       
-      console.log(`💾 Decoded Base64 data: ${arrayBuffer.byteLength} bytes`)
+      console.log(`Decoded Base64 data: ${arrayBuffer.byteLength} bytes`)
       
       // Create blob and blob URL for SceneLoader
       const blob = new Blob([arrayBuffer], { type: 'application/octet-stream' })
       const blobUrl = URL.createObjectURL(blob)
       
-      console.log('🔗 Created blob URL for model reconstruction')
+      console.log('Created blob URL for model reconstruction')
       
       // Add model to store with all saved properties
       // The ViewportProduction component will handle the actual Babylon.js scene reconstruction
@@ -102,16 +91,17 @@ const DesignFilePage = () => {
         URL.revokeObjectURL(blobUrl)
       }, 5000)
       
-      console.log('✅ Model added to store for reconstruction:', modelData.fileName)
+      console.log('Model added to store for reconstruction:', modelData.fileName)
       
     } catch (error) {
-      console.error('❌ Failed to reconstruct imported model:', error, modelData)
+      console.error('Failed to reconstruct imported model:', error, modelData)
+      // DISABLED: design/[fileId].tsx addShape call causing mesh sync interference
       // Fallback: add as regular shape data to prevent load failure
       try {
-        addShape(modelData)
-        console.log('⚠️ Added model as fallback shape')
+        // addShape(modelData)
+        console.log('DISABLED: design/[fileId].tsx fallback addShape call to prevent mesh sync interference')
       } catch (fallbackError) {
-        console.error('❌ Fallback also failed:', fallbackError)
+        console.error('Fallback also failed:', fallbackError)
       }
     }
   }
@@ -138,7 +128,7 @@ const DesignFilePage = () => {
           try {
             // Check if this is an imported model that needs special reconstruction
             if (savedObject.type === 'model' && savedObject.data && savedObject.format) {
-              console.log('🔄 Reconstructing imported model:', savedObject.fileName)
+              console.log('Reconstructing imported model:', savedObject.fileName)
               await reconstructImportedModel(savedObject)
             } else {
               // Regular primitive shape - recreate with saved properties
@@ -154,14 +144,16 @@ const DesignFilePage = () => {
               }
               
               console.log('Loading primitive shape:', shapeData)
-              addShape(shapeData)
+              // DISABLED: design/[fileId].tsx addShape call causing mesh sync interference
+              // addShape(shapeData)
+              console.log('DISABLED: design/[fileId].tsx primitive addShape call to prevent mesh sync interference')
             }
           } catch (objectError) {
             console.error('Error loading individual object:', objectError, savedObject)
           }
         }
         
-        console.log('✅ Design content loaded successfully')
+        console.log('Design content loaded successfully')
       } else {
         console.log('No objects found in saved design content')
       }
@@ -192,15 +184,9 @@ const DesignFilePage = () => {
             
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col overflow-hidden">
-              <div className={`${editorVisible ? 'flex-1' : 'h-full'} overflow-hidden transition-all duration-300`}>
+              <div className="h-full overflow-hidden">
                 <ViewportProduction id={`design-viewport-${fileId}`} />
               </div>
-              
-              {editorVisible && (
-                <div className="h-1/3 border-t border-gray-700 transition-all duration-300">
-                  <CodeViewer ref={codeViewerRef} />
-                </div>
-              )}
             </div>
             
             {activeTab === 'voice' && (

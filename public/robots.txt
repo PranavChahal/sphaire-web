@@ -1,0 +1,53 @@
+# Sphaire3D - AI-Powered 3D Modeling Platform
+# Domain: sphaire3d.design
+
+User-agent: *
+Allow: /
+Allow: /dashboard
+Allow: /design/*
+
+# Disallow authentication pages from indexing
+Disallow: /api/
+Disallow: /login
+Disallow: /signup
+Disallow: /_next/
+Disallow: /static/
+
+# Allow specific API documentation if you create it
+Allow: /api/docs
+
+# Crawl delay (be nice to smaller bots)
+Crawl-delay: 1
+
+# Sitemap location
+Sitemap: https://sphaire3d.design/sitemap.xml
+
+# Popular search engines
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 0.5
+
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 0.5
+
+User-agent: Slurp
+Allow: /
+Crawl-delay: 1
+
+# Social media crawlers (for rich previews)
+User-agent: facebookexternalbot
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: LinkedInBot
+Allow: /
+
+# Block bad bots
+User-agent: AhrefsBot
+Crawl-delay: 10
+
+User-agent: SemrushBot
+Crawl-delay: 10

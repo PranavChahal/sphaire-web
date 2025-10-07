@@ -8,6 +8,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import OpenAI from 'openai';
 import promptContext from '../../services/promptContext';
+import { getKeyPool } from '../../services/apiKeyPool';
 
 interface APIResponse {
   code?: string;
@@ -15,10 +16,9 @@ interface APIResponse {
   error?: string;
 }
 
-// Initialize OpenAI with API key
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// DO NOT initialize OpenAI client at module level!
+// Next.js API routes may not have env vars loaded yet
+// Initialize it inside the handler function instead
 
 export default async function handler(
   req: NextApiRequest,
@@ -28,59 +28,190 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { prompt, backend } = req.body;
+  const { prompt, backend, systemPrompt: customSystemPrompt, apiKey: customApiKey } = req.body;
+  
+  // Get API key from pool or fallback to custom/env
+  let apiKey: string;
+  let usingKeyPool = false;
+  
+  if (customApiKey) {
+    apiKey = customApiKey;
+    console.log('Using custom API key from request');
+  } else {
+    try {
+      // SERVER-SIDE INITIALIZATION: Check for multiple keys first
+      const multiKeysEnv = process.env.OPENAI_API_KEYS;
+      
+      if (multiKeysEnv && multiKeysEnv.includes(',')) {
+        // Multiple keys found - initialize pool if not already done
+        const keys = multiKeysEnv.split(',').map(k => k.trim()).filter(k => k.length > 0);
+        
+        if (keys.length > 1) {
+          // Initialize pool (will reuse existing if already initialized)
+          try {
+            const { initializeKeyPool } = require('../../services/apiKeyPool');
+            initializeKeyPool(keys);
+          } catch (initError) {
+            // Pool might already be initialized, that's OK
+          }
+        }
+      }
+      
+      // Get key from pool
+      const keyPool = getKeyPool();
+      apiKey = keyPool.getNextKey();
+      usingKeyPool = true;
+      
+      // Log pool stats
+      const stats = keyPool.getStats();
+      console.log(`[KEY-POOL] Using key from pool (${stats.available}/${stats.total} available, ${stats.totalRequests} total requests)`);
+    } catch (error) {
+      // Fallback to env if pool not initialized
+      apiKey = process.env.OPENAI_API_KEY || '';
+      console.log('Using single API key from env (pool not initialized)');
+    }
+  }
+  
+  console.log('API Key check:', {
+    exists: !!apiKey,
+    length: apiKey?.length || 0,
+    starts: apiKey?.substring(0, 10) || 'N/A',
+    pooled: usingKeyPool
+  });
+  
+  if (!apiKey) {
+    console.error('OpenAI API key not configured');
+    console.error('Environment variables:', Object.keys(process.env).filter(k => k.includes('OPENAI')));
+    return res.status(500).json({ 
+      error: 'OpenAI API key not configured. Please add OPENAI_API_KEY to .env.local and restart the server.' 
+    });
+  }
 
   if (!prompt || typeof prompt !== 'string') {
     return res.status(400).json({ error: 'Missing or invalid prompt' });
   }
 
-  // Validate backend parameter
+  // Validate backend parameter (default to OpenCascade for CAD precision)
   const validBackends = ['babylon', 'opencascade', 'auto'];
-  const selectedBackend = backend && validBackends.includes(backend) ? backend : 'auto';
+  const selectedBackend = backend && validBackends.includes(backend) ? backend : 'opencascade';
   
-  console.log('🔧 AI-CODE: Backend requested:', selectedBackend);
+  console.log('AI-CODE: Backend requested:', selectedBackend);
 
   try {
-    console.log('🤖 Generating code with GPT-4o for prompt:', prompt.substring(0, 100) + '...');
+    console.log('Generating code with GPT-4o for prompt:', prompt.substring(0, 100) + '...');
+    
+    // Initialize OpenAI client with API key from environment
+    const openai = new OpenAI({
+      apiKey: apiKey,
+    });
     
     // Build context-aware prompts using our prompt engineering system with backend-specific context
-    const systemPrompt = promptContext.buildSystemPrompt(selectedBackend);
+    // Pass user input to buildSystemPrompt for domain detection and targeted examples
+    // Allow custom system prompt for questioning service
+    const systemPrompt = customSystemPrompt || promptContext.buildSystemPrompt(selectedBackend, prompt);
     const userPrompt = promptContext.buildUserPrompt(prompt, 'code', selectedBackend);
     
-    console.log('🔧 AI-CODE: Using backend-specific context for:', selectedBackend);
+    console.log('AI-CODE: Using backend-specific context for:', selectedBackend);
+    console.log('AI-CODE: Domain-specific examples loaded based on user prompt');
     
-    // Generate code using OpenAI GPT-4o (best model for coding)
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o', // Best OpenAI model for JavaScript/TypeScript coding
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      max_tokens: 1500,
-      temperature: 0.1, // Low temperature for precise, consistent code generation
-      top_p: 0.95
-    });
+    // Generate code using OpenAI with intelligent fallback models
+    // Try multiple models in order of preference
+    const models = [
+      'gpt-4o-mini',           // Best balance (fast, accurate, cheap)
+      'gpt-3.5-turbo',         // Fallback 1 (fast, reliable)
+      'gpt-4-turbo-preview',   // Fallback 2 (high quality)
+      'gpt-4'                  // Fallback 3 (highest quality)
+    ];
+    
+    let response;
+    let modelUsed = '';
+    let lastError;
+    
+    for (const modelToUse of models) {
+      try {
+        console.log(`Trying OpenAI API with model: ${modelToUse}`);
+        
+        response = await openai.chat.completions.create({
+          model: modelToUse,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ],
+          max_tokens: 3000, // Increased - condensed prompts allow more output
+          temperature: 0.1, // Low temperature for precise, consistent code generation
+          top_p: 0.95
+        });
 
-    const generatedCode = response.choices[0]?.message?.content?.trim() || '';
-    
-    if (!generatedCode) {
-      console.error('❌ OpenAI returned empty response');
-      return res.status(500).json({ 
-        error: 'AI returned empty response. Please try again.' 
-      });
+        const generatedCode = response.choices[0]?.message?.content?.trim() || '';
+        
+        if (!generatedCode) {
+          console.warn(`Model ${modelToUse} returned empty response, trying next model...`);
+          continue;
+        }
+
+        modelUsed = modelToUse;
+        console.log(`Generated ${generatedCode.length} characters using ${modelUsed}`);
+        console.log('Code preview:', generatedCode.substring(0, 200) + '...');
+        
+        return res.status(200).json({ 
+          code: generatedCode, 
+          model: modelUsed
+        });
+        
+      } catch (modelError: any) {
+        lastError = modelError;
+        console.warn(`Model ${modelToUse} failed:`, modelError.message);
+        
+        // Check if it's a rate limit error
+        if (usingKeyPool && (modelError.status === 429 || modelError.code === 'rate_limit_exceeded')) {
+          try {
+            const keyPool = getKeyPool();
+            keyPool.markRateLimited(apiKey, 60); // Mark as rate-limited for 60 seconds
+            console.warn(`Marked current key as rate-limited, will rotate to next key on retry`);
+          } catch (e) {
+            // Ignore if pool not available
+          }
+        }
+        
+        // If it's the last model, throw the error
+        if (modelToUse === models[models.length - 1]) {
+          throw modelError;
+        }
+        
+        // Otherwise, try the next model
+        console.log(`Trying next fallback model...`);
+        continue;
+      }
     }
-
-    console.log(`✅ Generated ${generatedCode.length} characters using GPT-4o`);
-    console.log('📝 Code preview:', generatedCode.substring(0, 200) + '...');
     
-    return res.status(200).json({ 
-      code: generatedCode, 
-      model: 'gpt-4o' 
-    });
+    // If we get here, all models failed
+    throw new Error('All AI models failed to generate code');
   } catch (error: any) {
-    console.error('🚨 Error in AI code generation:', error);
+    console.error('Error in AI code generation:', error);
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      type: error.type,
+      status: error.status
+    });
+    
+    // Provide specific error messages
+    let errorMessage = 'Code generation failed';
+    
+    if (error.code === 'invalid_api_key') {
+      errorMessage = 'Invalid OpenAI API key. Please check your .env.local file.';
+    } else if (error.code === 'insufficient_quota') {
+      errorMessage = 'OpenAI API quota exceeded. Please add credits to your account.';
+    } else if (error.status === 429 || error.message?.includes('rate limit')) {
+      errorMessage = 'OpenAI is experiencing high demand. Please wait 30-60 seconds and try again.';
+    } else if (error.message?.includes('resource_exhausted')) {
+      errorMessage = 'OpenAI model is overloaded. The system has switched to a backup model. Please try again.';
+    } else if (error.message) {
+      errorMessage = `${errorMessage}: ${error.message}`;
+    }
+    
     return res.status(500).json({ 
-      error: `Code generation failed: ${error.message || 'Unknown error'}` 
+      error: errorMessage
     });
   }
 }

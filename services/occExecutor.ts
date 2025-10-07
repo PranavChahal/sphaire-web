@@ -13,17 +13,17 @@ export class OpenCascadeExecutor {
   private initializationPromise: Promise<void> | null = null;
 
   constructor() {
-    console.log('🔧 OpenCascade: Executor instance created');
+    console.log('OpenCascade: Executor instance created');
   }
 
   async initializeWorker(): Promise<void> {
     if (this.isInitialized) {
-      console.log('🔧 OpenCascade: Worker already initialized');
+      console.log('OpenCascade: Worker already initialized');
       return;
     }
 
     if (this.isInitializing && this.initializationPromise) {
-      console.log('🔧 OpenCascade: Worker initialization in progress, waiting...');
+      console.log('OpenCascade: Worker initialization in progress, waiting...');
       return this.initializationPromise;
     }
 
@@ -31,7 +31,7 @@ export class OpenCascadeExecutor {
     
     this.initializationPromise = new Promise((resolve, reject) => {
       try {
-        console.log('🔧 OpenCascade: Initializing worker with Next.js compatibility...');
+        console.log('OpenCascade: Initializing worker with Next.js compatibility...');
         
         this.worker = new Worker(
           new URL('../workers/occt.worker.ts', import.meta.url)
@@ -44,11 +44,11 @@ export class OpenCascadeExecutor {
             if (e.data.success) {
               this.isInitialized = true;
               this.isInitializing = false;
-              console.log('✅ OpenCascade: Worker initialized successfully');
+              console.log('OpenCascade: Worker initialized successfully');
               resolve();
             } else {
               this.isInitializing = false;
-              console.error('🚨 OpenCascade: Worker initialization failed:', e.data.error);
+              console.error('OpenCascade: Worker initialization failed:', e.data.error);
               reject(new Error(e.data.error || 'Worker initialization failed'));
             }
           }
@@ -58,7 +58,7 @@ export class OpenCascadeExecutor {
         
         this.worker.onerror = (error) => {
           this.isInitializing = false;
-          console.error('🚨 OpenCascade: Worker error:', error);
+          console.error('OpenCascade: Worker error:', error);
           reject(new Error(`Worker error: ${error.message}`));
         };
         
@@ -72,7 +72,7 @@ export class OpenCascadeExecutor {
         
       } catch (error) {
         this.isInitializing = false;
-        console.error('🚨 OpenCascade: Worker initialization setup failed:', error);
+        console.error('OpenCascade: Worker initialization setup failed:', error);
         reject(error);
       }
     });
@@ -82,10 +82,10 @@ export class OpenCascadeExecutor {
 
   async executeCode(code: string): Promise<OCCTExecutionResult> {
     try {
-      console.log('🔧 OpenCascade: Starting code execution...');
+      console.log('OpenCascade: Starting code execution...');
       
       if (!this.worker || !this.isInitialized) {
-        console.log('🔧 OpenCascade: Worker not ready, initializing...');
+        console.log('OpenCascade: Worker not ready, initializing...');
         await this.initializeWorker();
       }
 
@@ -95,17 +95,17 @@ export class OpenCascadeExecutor {
 
       return new Promise((resolve) => {
         const executionId = Math.random().toString(36).substr(2, 9);
-        console.log(`🔧 OpenCascade: Executing code with ID ${executionId}`);
+        console.log(`OpenCascade: Executing code with ID ${executionId}`);
         
         const handleExecutionResult = (e: MessageEvent) => {
           if (e.data.type === 'execution-result' && e.data.id === executionId) {
             this.worker?.removeEventListener('message', handleExecutionResult);
             
             if (e.data.success) {
-              console.log('✅ OpenCascade: Code execution successful');
+              console.log('OpenCascade: Code execution successful');
               resolve(e.data.result);
             } else {
-              console.error('🚨 OpenCascade: Code execution failed:', e.data.error);
+              console.error('OpenCascade: Code execution failed:', e.data.error);
               resolve({
                 success: false,
                 error: e.data.error || 'Code execution failed'
@@ -132,7 +132,7 @@ export class OpenCascadeExecutor {
       });
       
     } catch (error) {
-      console.error('🚨 OpenCascade: Execution setup failed:', error);
+      console.error('OpenCascade: Execution setup failed:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown execution error'
@@ -142,7 +142,7 @@ export class OpenCascadeExecutor {
 
   terminate(): void {
     if (this.worker) {
-      console.log('🔧 OpenCascade: Terminating worker');
+      console.log('OpenCascade: Terminating worker');
       this.worker.terminate();
       this.worker = null;
       this.isInitialized = false;

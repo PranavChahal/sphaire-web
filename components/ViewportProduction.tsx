@@ -2,8 +2,10 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import {
   Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, DirectionalLight,
   MeshBuilder, StandardMaterial, Color3, Color4, AbstractMesh, Mesh,
-  UtilityLayerRenderer, GizmoManager
+  UtilityLayerRenderer, GizmoManager, VertexData
 } from '@babylonjs/core';
+import { CubeTexture } from '@babylonjs/core/Materials/Textures/cubeTexture';
+import { SceneLoader } from '@babylonjs/core/Loading/sceneLoader';
 import { GizmoMode } from '../utils/UnifiedGizmoSystem';
 
 import '@babylonjs/core/Materials/standardMaterial';
@@ -13,6 +15,7 @@ import '@babylonjs/loaders/OBJ/objFileLoader';
 import '@babylonjs/loaders/STL/stlFileLoader';
 
 import useStore from '../store/store';
+import type { Shape } from '../store/store';
 import useSceneStore from '../store/sceneStore';
 import { useRealtimeCollaboration } from '../hooks/useRealtimeCollaboration';
 import { useRouter } from 'next/router';
@@ -43,18 +46,20 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [gizmoMode, setGizmoMode] = useState<GizmoMode>('position');
+  // REMOVED: modelLoadEpoch no longer needed after eliminating redundant mesh sync effect
   
   // Get fileId from router for collaborative features
   const router = useRouter();
   const { fileId } = router.query;
   
   const { 
-    shapes,
-    updateShape
+    _updateShapeDirect: updateShapeDirectly, // Direct update without undo/redo
+    _undoRedoSystem: undoRedoSystem, // Undo/redo system for proper tracking
   } = useStore();
   const { setScene, selectedMeshes, setSelectedMeshes } = useSceneStore();
   
-  // 🚀 COLLABORATIVE FEATURES: Initialize real-time collaboration hook
+  
+  // COLLABORATIVE FEATURES: Initialize real-time collaboration hook
   const {
     broadcastEvent,       // function to broadcast events to others
     startEditingObject,   // call when user starts editing (locks object)
@@ -68,7 +73,7 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
       updateCollaboratorCursors(presence);
     },
     onRealtimeEvent: (event) => {
-      console.log('📡 COLLABORATION: Received realtime event:', event);
+      console.log('COLLABORATION: Received realtime event:', event);
       handleRemoteEvent(event);
     }
   });
@@ -84,14 +89,14 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
   // Shape mesh references
   const shapeMeshesRef = useRef<Map<string, Mesh>>(new Map());
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  // 🚀 COLLABORATIVE FEATURES: Cursor and presence tracking
+  // COLLABORATIVE FEATURES: Cursor and presence tracking
   const collaboratorCursorsRef = useRef<Map<string, Mesh>>(new Map());
   const cursorUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Keyboard state for multi-selection
   const keyboardStateRef = useRef({ shift: false, ctrl: false });
 
-  // 🚀 COLLABORATIVE FEATURES: Handle incoming real-time events from other users
+  // COLLABORATIVE FEATURES: Handle incoming real-time events from other users
   const handleRemoteEvent = useCallback((event: any) => {
     // Skip our own events to avoid double-processing
     if (event.user_id === router.query.userId) return;
@@ -101,7 +106,7 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
     switch (event.type) {
       case 'transform':
         // Find the object in local state and update its transform
-        console.log('🔄 COLLABORATION: Applying remote transform to object:', event.object_id);
+        console.log('COLLABORATION: Applying remote transform to object:', event.object_id);
         updateObjectTransform(event.object_id, event.data.newTransform);
         break;
         
@@ -113,7 +118,7 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
         
       case 'delete_object':
         // Remove object from scene
-        console.log('🗑️ COLLABORATION: Removing remote object:', event.object_id);
+        console.log('COLLABORATION: Removing remote object:', event.object_id);
         removeObjectFromScene(event.object_id);
         break;
         
@@ -122,7 +127,7 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
     }
   }, [router.query.userId]);
   
-  // 🚀 COLLABORATIVE FEATURES: Update object transform from remote event
+  // COLLABORATIVE FEATURES: Update object transform from remote event
   const updateObjectTransform = useCallback((objectId: string, newTransform: any) => {
     const mesh = shapeMeshesRef.current.get(objectId);
     if (mesh && newTransform) {
@@ -131,28 +136,35 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
         mesh.position.copyFrom(new Vector3(newTransform.position.x, newTransform.position.y, newTransform.position.z));
       }
       if (newTransform.rotation) {
-        mesh.rotation.copyFrom(new Vector3(newTransform.rotation.x, newTransform.rotation.y, newTransform.rotation.z));
+        const r = newTransform.rotation;
+        mesh.rotation.copyFrom(
+          new Vector3(
+            (r.x || 0) * Math.PI / 180,
+            (r.y || 0) * Math.PI / 180,
+            (r.z || 0) * Math.PI / 180
+          )
+        );
       }
       if (newTransform.scaling) {
         mesh.scaling.copyFrom(new Vector3(newTransform.scaling.x, newTransform.scaling.y, newTransform.scaling.z));
       }
-      console.log('✅ COLLABORATION: Applied remote transform to mesh:', objectId);
+      console.log('COLLABORATION: Applied remote transform to mesh:', objectId);
     }
   }, []);
   
-  // 🚀 COLLABORATIVE FEATURES: Add object from remote event  
+  // COLLABORATIVE FEATURES: Add object from remote event  
   const addObjectToScene = useCallback((objectData: any) => {
     // This will be implemented to handle remote object additions
-    console.log('🔄 COLLABORATION: Remote object addition not yet implemented:', objectData);
+    console.log('COLLABORATION: Remote object addition not yet implemented:', objectData);
   }, []);
   
-  // 🚀 COLLABORATIVE FEATURES: Remove object from remote event
+  // COLLABORATIVE FEATURES: Remove object from remote event
   const removeObjectFromScene = useCallback((objectId: string) => {
     // This will be implemented to handle remote object deletions
-    console.log('🔄 COLLABORATION: Remote object deletion not yet implemented:', objectId);
+    console.log('COLLABORATION: Remote object deletion not yet implemented:', objectId);
   }, []);
   
-  // 🚀 COLLABORATIVE FEATURES: Create 3D cursor for remote user
+  // COLLABORATIVE FEATURES: Create 3D cursor for remote user
   const createRemoteCursor = useCallback((collaboratorId: string, position: {x: number, y: number, z: number}, email: string) => {
     if (!sceneRef.current) return;
     
@@ -177,11 +189,11 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
     // Store cursor reference
     collaboratorCursorsRef.current.set(collaboratorId, cursorSphere);
     
-    console.log(`✨ COLLABORATION: Created 3D cursor for ${email} at`, position);
+    console.log(`COLLABORATION: Created 3D cursor for ${email} at`, position);
     return cursorSphere;
   }, []);
   
-  // 🚀 COLLABORATIVE FEATURES: Update remote cursor position
+  // COLLABORATIVE FEATURES: Update remote cursor position
   const updateRemoteCursor = useCallback((collaboratorId: string, position: {x: number, y: number, z: number}) => {
     const cursor = collaboratorCursorsRef.current.get(collaboratorId);
     if (cursor) {
@@ -189,35 +201,35 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
     }
   }, []);
   
-  // 🚀 COLLABORATIVE FEATURES: Remove remote cursor
+  // COLLABORATIVE FEATURES: Remove remote cursor
   const removeRemoteCursor = useCallback((collaboratorId: string) => {
     const cursor = collaboratorCursorsRef.current.get(collaboratorId);
     if (cursor) {
       cursor.dispose();
       collaboratorCursorsRef.current.delete(collaboratorId);
-      console.log(`🗑️ COLLABORATION: Removed cursor for collaborator ${collaboratorId}`);
+      console.log(`COLLABORATION: Removed cursor for collaborator ${collaboratorId}`);
     }
   }, []);
   
-  // 🚀 COLLABORATIVE FEATURES: Handle cursor position tracking
+  // COLLABORATIVE FEATURES: Handle cursor position tracking
   const handleMouseMove = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
     if (!sceneRef.current || !cameraRef.current || !updateCursorPosition) return;
     
     // Throttle cursor updates to avoid flooding
     if (cursorUpdateTimeoutRef.current) return;
     
+    // IMPORTANT: Read DOM and mouse values BEFORE scheduling, avoid pooled event
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const px = event.clientX - rect.left;
+    const py = event.clientY - rect.top;
+    
     cursorUpdateTimeoutRef.current = setTimeout(() => {
       cursorUpdateTimeoutRef.current = null;
       
-      // Get 3D position under mouse cursor
-      const target = event.currentTarget;
-      const rect = target.getBoundingClientRect();
-      if (!rect) return;
-      
-      const pickResult = sceneRef.current!.pick(
-        event.clientX - rect.left,
-        event.clientY - rect.top
-      );
+      // Use precomputed coordinates; do not reference the pooled event here
+      const pickResult = sceneRef.current!.pick(px, py);
       
       if (pickResult.hit && pickResult.pickedPoint) {
         const pos = pickResult.pickedPoint;
@@ -230,7 +242,7 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
     }, 100); // Update max every 100ms
   }, [updateCursorPosition]);
   
-  // 🚀 COLLABORATIVE FEATURES: Update collaborator cursors based on presence
+  // COLLABORATIVE FEATURES: Update collaborator cursors based on presence
   const updateCollaboratorCursors = useCallback((presenceList: any[]) => {
     if (!sceneRef.current) return;
     
@@ -268,7 +280,7 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
       }
     });
     
-    console.log(`🚀 COLLABORATION: Updated cursors for ${activeCursors.size} active collaborators`);
+    console.log(`COLLABORATION: Updated cursors for ${activeCursors.size} active collaborators`);
   }, [router.query.userId, createRemoteCursor, updateRemoteCursor, removeRemoteCursor]);
 
   // BULLETPROOF engine creation with all required methods
@@ -311,7 +323,7 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
   const startRenderLoop = useCallback(() => {
     if (!engineRef.current || !sceneRef.current) return;
     
-    console.log('🚀 PRODUCTION: Starting optimized render loop...');
+    console.log('PRODUCTION: Starting optimized render loop...');
     isRenderingRef.current = true;
     
     let lastFrameTime = 0;
@@ -351,7 +363,7 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
 
   // PRODUCTION scene creation
   const createScene = useCallback((engine: Engine): Scene => {
-    console.log('🎬 PRODUCTION: Creating high-quality dark 3D environment...');
+    console.log('PRODUCTION: Creating high-quality dark 3D environment...');
     
     const scene = new Scene(engine);
     
@@ -381,7 +393,8 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
     
     // CAMERA LIMITS FOR PRECISION
     camera.lowerBetaLimit = 0.1;
-    camera.upperBetaLimit = Math.PI / 2.2;
+    // Allow orbiting below the grid for inspection under models
+    camera.upperBetaLimit = Math.PI - 0.01;
     camera.lowerRadiusLimit = 2;
     camera.upperRadiusLimit = 100;
     
@@ -390,7 +403,7 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
     camera.setTarget(Vector3.Zero()); // Center at origin
     
     // Enable panning to allow camera target movement in X/Z plane
-    camera.panningAxis = new Vector3(1, 0, 1); // Allow X and Z panning only
+    camera.panningAxis = new Vector3(1, 1, 1); // Allow X, Y, Z panning (can move below grid)
     camera.panningInertia = 0.9; // Smooth panning
     
     cameraRef.current = camera;
@@ -407,6 +420,16 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
     const rimLight = new DirectionalLight('rimLight', new Vector3(1, 0.2, 0.5), scene);
     rimLight.intensity = 0.6;
     rimLight.diffuse = new Color3(0.9, 0.9, 1.0); // Subtle rim lighting
+
+    // ENVIRONMENT TEXTURE for proper PBR reflections (glTF materials)
+    try {
+      const envUrl = 'https://assets.babylonjs.com/environments/environmentSpecular.env';
+      scene.environmentTexture = CubeTexture.CreateFromPrefilteredData(envUrl, scene);
+      scene.environmentIntensity = 1.0;
+      console.log('PRODUCTION: Environment texture set for PBR materials');
+    } catch (e) {
+      console.warn('PRODUCTION: Failed to set environment texture:', e);
+    }
     
     // ENHANCED TRANSPARENT GRID SYSTEM
     const createTransparentGrid = () => {
@@ -414,7 +437,7 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
       const gridDivisions = 100; // INCREASED NUMBER OF GRID SQUARES for finer precision
       const gridSpacing = gridSize / gridDivisions;
       
-      console.log(`📦 Creating grid: ${gridSize}x${gridSize} with ${gridDivisions} divisions (${gridSpacing} unit squares)`);
+      console.log(`Creating grid: ${gridSize}x${gridSize} with ${gridDivisions} divisions (${gridSpacing} unit squares)`);
       
       // Create line system for grid
       const gridLines: Vector3[][] = [];
@@ -469,7 +492,7 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
       centerAxisX.isPickable = false;
       centerAxisZ.isPickable = false;
       
-      console.log('✅ Enhanced transparent grid created successfully');
+      console.log('Enhanced transparent grid created successfully');
       return { grid, centerAxisX, centerAxisZ };
     };
     
@@ -483,45 +506,45 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
     
     // BULLETPROOF GIZMO SYSTEM (BASIC BABYLON.JS ONLY)
     try {
-      console.log('🎯 UnifiedGizmoSystem initialization handled by React hook');
+      console.log('UnifiedGizmoSystem initialization handled by React hook');
       // UnifiedGizmoSystem is now managed by the useUnifiedGizmo hook above
       // This provides better React integration and lifecycle management
       
     } catch (error) {
-      console.error('❌ Failed to initialize gizmo system:', error);
+      console.error('Failed to initialize gizmo system:', error);
       // GizmoManager errors are handled below
     }
     
-    // 🎯 OLD WORKING APPROACH: Initialize GizmoManager directly (simple & functional)
+    // OLD WORKING APPROACH: Initialize GizmoManager directly (simple & functional)
     try {
-      console.log('⚙️ 🔍 ENHANCED DEBUG: Starting GizmoManager initialization...');
-      console.log('🔍 Scene ready:', !!scene, 'Camera ready:', !!camera);
-      console.log('🔍 Current gizmoMode:', gizmoMode);
-      console.log('🔍 Existing gizmoManagerRef:', !!gizmoManagerRef.current);
+      console.log('ENHANCED DEBUG: Starting GizmoManager initialization...');
+      console.log('Scene ready:', !!scene, 'Camera ready:', !!camera);
+      console.log('Current gizmoMode:', gizmoMode);
+      console.log('Existing gizmoManagerRef:', !!gizmoManagerRef.current);
       
       // 1. Create utility layer renderer
       const utilLayer = new UtilityLayerRenderer(scene);
-      console.log('🔍 UtilityLayerRenderer created:', !!utilLayer);
+      console.log('UtilityLayerRenderer created:', !!utilLayer);
       
       const gizmoManager = new GizmoManager(scene, /*thickness=*/1, utilLayer);
-      console.log('🔍 GizmoManager created:', !!gizmoManager);
+      console.log('GizmoManager created:', !!gizmoManager);
       
       // 2. CRITICAL: Set render camera and configure depth settings
       utilLayer.setRenderCamera(camera);
       utilLayer.utilityLayerScene.autoClearDepthAndStencil = false;
-      console.log('🔍 Camera set on utility layer:', camera.name);
+      console.log('Camera set on utility layer:', camera.name);
       
       // 3. Configure GizmoManager settings
       gizmoManager.clearGizmoOnEmptyPointerEvent = true; // Detach when clicking empty space
       gizmoManager.usePointerToAttachGizmos = false; // Manual attach mode
       gizmoManager.scaleRatio = 2; // Larger gizmo size
       
-      // 🔍 X-RAY GIZMO FIX: Make gizmos visible THROUGH all objects (even when extremely large)
+      // X-RAY GIZMO FIX: Make gizmos visible THROUGH all objects (even when extremely large)
       // This prevents large objects from obscuring gizmo handles completely
       utilLayer.utilityLayerScene.autoClearDepthAndStencil = false;
       utilLayer.shouldRender = true;
       
-      // 🚀 CRITICAL X-RAY CONFIGURATION: Apply after gizmos are created
+      // CRITICAL X-RAY CONFIGURATION: Apply after gizmos are created
       const applyXRayToGizmos = () => {
         const configureXRayMaterials = (gizmo: any) => {
           if (!gizmo) return;
@@ -531,7 +554,7 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
           
           gizmoMeshes.forEach((mesh: any) => {
             if (mesh.material) {
-              // 🔍 X-RAY EFFECT: Make gizmo visible through all objects
+              // X-RAY EFFECT: Make gizmo visible through all objects
               mesh.material.disableDepthWrite = true;  // Don't write to depth buffer
               mesh.material.depthFunction = 519; // ALWAYS (Constants.ALWAYS = 519)
               mesh.material.backFaceCulling = false; // Render both sides
@@ -568,13 +591,13 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
           gizmoManager.gizmos.scaleGizmo.scaleRatio = 1.5;
         }
         
-        console.log('✅ X-ray gizmo configuration applied - gizmos now visible through all objects!');
+        console.log('X-ray gizmo configuration applied - gizmos now visible through all objects!');
       };
       
       // Apply X-ray effect with delay to ensure gizmos are created
       setTimeout(applyXRayToGizmos, 200);
       
-      console.log('🔍 GizmoManager configuration applied with always-visible settings');
+      console.log('GizmoManager configuration applied with always-visible settings');
       
       // 4. Enable desired gizmos based on current mode
       const enabled = gizmoMode !== 'none';
@@ -582,7 +605,7 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
       gizmoManager.rotationGizmoEnabled = gizmoMode === 'rotation' && enabled;
       gizmoManager.scaleGizmoEnabled = gizmoMode === 'scale' && enabled;
       gizmoManager.boundingBoxGizmoEnabled = false;
-      console.log('🔍 Gizmo modes enabled:', {
+      console.log('Gizmo modes enabled:', {
         position: gizmoManager.positionGizmoEnabled,
         rotation: gizmoManager.rotationGizmoEnabled,
         scale: gizmoManager.scaleGizmoEnabled
@@ -592,17 +615,17 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
       gizmoLayerRef.current = utilLayer;
       gizmoManagerRef.current = gizmoManager;
       
-      console.log('✅ 🔍 Direct GizmoManager system initialized successfully!');
-      console.log('🔍 Final refs set:', {
+      console.log('Direct GizmoManager system initialized successfully!');
+      console.log('Final refs set:', {
         gizmoManager: !!gizmoManagerRef.current,
         utilityLayer: !!gizmoLayerRef.current
       });
     } catch (error) {
-      console.error('❌ 🔍 Failed to initialize direct GizmoManager:', error);
-      console.error('🔍 Error stack:', error);
+      console.error('Failed to initialize direct GizmoManager:', error);
+      console.error('Error stack:', error);
     }
     
-    // 🎯 OLD WORKING PATTERN: NO Babylon.js pointer observers (they interfere with gizmos)
+    // OLD WORKING PATTERN: NO Babylon.js pointer observers (they interfere with gizmos)
     // NOTE: Removed main-scene pointer observables that were interfering with gizmo interaction
     // Gizmo interaction is handled by the UtilityLayerRenderer automatically
     // Mesh selection is handled by the React onPointerDown event
@@ -622,138 +645,470 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
     scene.autoClear = true; // Clean rendering
     scene.autoClearDepthAndStencil = true; // Proper depth handling
     
-    console.log('✨ HIGH-QUALITY DARK 3D ENVIRONMENT CREATED SUCCESSFULLY');
+    console.log('HIGH-QUALITY DARK 3D ENVIRONMENT CREATED SUCCESSFULLY');
     return scene;
   }, []);
 
-  // 🎯 INCREMENTAL MESH REGISTRY (preserves object transforms)
-  const syncShapeMeshes = useCallback(() => {
+  // INCREMENTAL MESH REGISTRY (preserves object transforms)
+  const syncShapeMeshes = useCallback((shapeList: Shape[]) => {
     if (!sceneRef.current) return;
+    const list = shapeList; // DO NOT read from `shapes` here; only use the `shapeList` param
     
-    console.log('🔄 PRODUCTION: Syncing shape meshes (incremental approach)...');
+    console.log('PRODUCTION: Syncing shape meshes (incremental approach)...');
     
     // 1. ADD any brand-new shapes (never dispose existing meshes)
-    shapes.forEach((shape) => {
+    list.forEach((shape) => {
       if (!shapeMeshesRef.current.has(shape.id)) {
-        console.log(`✨ Creating new mesh for shape: ${shape.id} (${shape.type})`);
+        console.log(`Creating new mesh for shape: ${shape.id} (${shape.type})`);
         
-        let mesh: Mesh;
+        let mesh: Mesh | undefined;
+        let shouldFinalizeMesh = true; // only true for primitives
         
         switch (shape.type) {
           case 'box':
             mesh = MeshBuilder.CreateBox(shape.id, { size: 2 }, sceneRef.current!);
+            if (mesh) { mesh.setEnabled(true); (mesh as any).isVisible = true; }
             break;
           case 'sphere':
             mesh = MeshBuilder.CreateSphere(shape.id, { diameter: 2 }, sceneRef.current!);
+            if (mesh) { mesh.setEnabled(true); (mesh as any).isVisible = true; }
             break;
           case 'cylinder':
             mesh = MeshBuilder.CreateCylinder(shape.id, { height: 2, diameter: 2 }, sceneRef.current!);
+            if (mesh) { mesh.setEnabled(true); (mesh as any).isVisible = true; }
             break;
           case 'model':
-            // 🚨 CRITICAL FIX: Handle imported models!
-            // Find the imported mesh by ID and apply transformations
-            const importedMesh = sceneRef.current!.getMeshByName(shape.id);
-            if (importedMesh) {
-              // Apply stored transformations to imported model
-              importedMesh.position = new Vector3(shape.position.x, shape.position.y, shape.position.z);
-              importedMesh.rotation = new Vector3(shape.rotation.x, shape.rotation.y, shape.rotation.z);
-              
+            // CRITICAL FIX: Handle imported models!
+            // Try to find container/mesh by shape.id
+            const scene = sceneRef.current!;
+            const existingNode = (scene.getMeshByName(shape.id) as any) || (scene.getNodeByName(shape.id) as any);
+            if (existingNode) {
+              // Apply stored transformations to imported model container/mesh
+              existingNode.position = new Vector3(shape.position.x, shape.position.y, shape.position.z);
+              existingNode.rotation = new Vector3(
+                (shape.rotation.x || 0) * Math.PI / 180,
+                (shape.rotation.y || 0) * Math.PI / 180,
+                (shape.rotation.z || 0) * Math.PI / 180
+              );
               const scaling = shape.scaling || { x: 1, y: 1, z: 1 };
-              importedMesh.scaling = new Vector3(scaling.x, scaling.y, scaling.z);
-              
-              console.log(`✅ Applied transformations to imported model:`, shape.id, {
+              existingNode.scaling = new Vector3(scaling.x, scaling.y, scaling.z);
+              if ((existingNode as any).setEnabled) (existingNode as any).setEnabled(true);
+              (existingNode as any).isVisible = true;
+              existingNode.metadata = { ...(existingNode.metadata || {}), shapeId: shape.id };
+              shapeMeshesRef.current.set(shape.id, existingNode as Mesh);
+              console.log(`Applied transformations to imported model:`, shape.id, {
                 position: shape.position,
                 rotation: shape.rotation,
-                scaling: scaling
+                scaling
               });
-              
-              // Store the imported mesh reference
-              shapeMeshesRef.current.set(shape.id, importedMesh as Mesh);
             } else {
-              console.warn(`⚠️ Imported model mesh not found for shape:`, shape.id);
+              console.warn(`Imported model node not found for shape, reconstructing:`, shape.id);
+              // Reconstruct from Base64 data in store
+              const data: any = (shape as any).data;
+              const base64: string | undefined = typeof data === 'string' ? data : (data?.main as string | undefined);
+              if (!base64) {
+                console.warn(`No model data present for shape:`, shape.id);
+                shouldFinalizeMesh = false;
+                break;
+              }
+              (async () => {
+                try {
+                  // Decode base64 to ArrayBuffer
+                  const binary = atob(base64);
+                  const bytes = new Uint8Array(binary.length);
+                  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+                  const blob = new Blob([bytes.buffer], { type: 'application/octet-stream' });
+                  const url = URL.createObjectURL(blob);
+                  const pluginExt = `.${(shape as any).format || 'glb'}`;
+                  const result = await SceneLoader.ImportMeshAsync('', '', url, sceneRef.current!, undefined, pluginExt);
+                  URL.revokeObjectURL(url);
+                  // Create a container Mesh named by shape.id for gizmo attachment
+                  const container = new Mesh(shape.id, sceneRef.current!);
+                  container.isPickable = false; // pick parts, not the group
+                  container.setEnabled(true);
+                  container.isVisible = true;
+                  container.metadata = { shapeId: shape.id, isModelContainer: true };
+                  // Parent GLTF ROOT to the container to preserve loader transforms
+                  const root = result.meshes.find((m: any) => m && m.name === '__root__');
+                  if (root) {
+                    root.isPickable = false; // avoid selecting invisible root
+                    root.parent = container;
+                  } else {
+                    // Fallback: reparent non-root meshes
+                    result.meshes.forEach((m: any) => {
+                      if (m && m.name && m.name !== '__root__') {
+                        m.parent = container;
+                      }
+                    });
+                  }
+                  // Tag root and children with metadata and improve visibility
+                  result.meshes.forEach((m: any) => {
+                    if (!m) return;
+                    m.metadata = { ...(m.metadata || {}), shapeId: shape.id, isModelChild: true };
+                    if (m.setEnabled) m.setEnabled(true);
+                    m.isVisible = true;
+                    if (m.material) {
+                      try {
+                        m.material.backFaceCulling = false;
+                        if ((m.material as any).twoSidedLighting !== undefined) {
+                          (m.material as any).twoSidedLighting = true;
+                        }
+                      } catch {}
+                    }
+                  });
+                  // Apply transforms
+                  container.position = new Vector3(shape.position.x, shape.position.y, shape.position.z);
+                  container.rotation = new Vector3(
+                    (shape.rotation.x || 0) * Math.PI / 180,
+                    (shape.rotation.y || 0) * Math.PI / 180,
+                    (shape.rotation.z || 0) * Math.PI / 180
+                  );
+                  const sc = shape.scaling || { x: 1, y: 1, z: 1 };
+                  container.scaling = new Vector3(sc.x, sc.y, sc.z);
+                  // Store reference
+                  shapeMeshesRef.current.set(shape.id, container as Mesh);
+                  console.log('Reconstructed imported model from store data:', shape.id);
+                  // REMOVED: setModelLoadEpoch no longer needed - Zustand subscription handles sync automatically
+                } catch (e) {
+                  console.error('Failed to reconstruct imported model:', shape.id, e);
+                }
+              })();
             }
-            return; // Skip primitive mesh creation for imported models
+            // Skip primitive finalization for models
+            console.log(`SKIPPING primitive mesh creation for custom/imported shape:`, shape.id);
+            shouldFinalizeMesh = false;
+            break;
+          
+          case 'parametric':
           case 'custom':
-            // 🚨 CRITICAL FIX: Do NOT create primitive meshes for 'custom' types!
-            // Custom shapes (including imported meshes) already exist from SceneLoader
-            console.log(`⏭️ SKIPPING primitive mesh creation for custom/imported shape:`, shape.id);
-            return; // Skip this iteration - don't create overlapping white cube
+            // CRITICAL FIX: Handle parametric and custom shapes with meshData
+            console.log(`Creating parametric/custom mesh for: ${shape.id}`);
+            const shapeData = shape as any;
+            
+            if (shapeData.meshData && shapeData.meshData.positions && shapeData.meshData.indices) {
+              try {
+                // Create custom mesh from vertex data
+                const customMesh = new Mesh(shape.id, sceneRef.current!);
+                
+                const positions = shapeData.meshData.positions;
+                const indices = shapeData.meshData.indices;
+                const normals: number[] = [];
+                
+                // Compute normals if not provided
+                if (!shapeData.meshData.normals) {
+                  VertexData.ComputeNormals(positions, indices, normals);
+                }
+                
+                const vertexData = new VertexData();
+                vertexData.positions = positions;
+                vertexData.indices = indices;
+                vertexData.normals = shapeData.meshData.normals || normals;
+                
+                // CRITICAL: Ensure normals point outward (not inverted)
+                // This is a fallback - backfaceCulling=false should handle it, but extra safety
+                if (vertexData.normals && vertexData.normals.length > 0) {
+                  // Check if majority of normals point inward (negative) - if so, flip them
+                  let dotSum = 0;
+                  for (let i = 0; i < positions.length; i += 3) {
+                    const nx = vertexData.normals[i];
+                    const ny = vertexData.normals[i + 1];
+                    const nz = vertexData.normals[i + 2];
+                    const px = positions[i];
+                    const py = positions[i + 1];
+                    const pz = positions[i + 2];
+                    // Dot product of position with normal (should be positive for outward normals)
+                    dotSum += nx * px + ny * py + nz * pz;
+                  }
+                  
+                  // If majority point inward, flip all normals
+                  if (dotSum < 0) {
+                    console.log(`Detected inverted normals for ${shape.id}, flipping...`);
+                    for (let i = 0; i < vertexData.normals.length; i++) {
+                      vertexData.normals[i] *= -1;
+                    }
+                  }
+                }
+                
+                vertexData.applyToMesh(customMesh);
+                
+                customMesh.setEnabled(true);
+                customMesh.isVisible = true;
+                customMesh.metadata = { 
+                  shapeId: shape.id, 
+                  isParametric: shape.type === 'parametric',
+                  version: (shape as any).version || 1  // Store version for change detection
+                };
+                
+                // FIX: Create material with proper backface culling settings
+                const customMaterial = new StandardMaterial(`${shape.id}_material`, sceneRef.current!);
+                customMaterial.backFaceCulling = false; // Show both sides
+                customMaterial.twoSidedLighting = true; // Proper lighting on both sides
+                
+                if (shape.color) {
+                  if (typeof shape.color === 'string') {
+                    const hex = shape.color.replace('#', '');
+                    const r = parseInt(hex.substr(0, 2), 16) / 255;
+                    const g = parseInt(hex.substr(2, 2), 16) / 255;
+                    const b = parseInt(hex.substr(4, 2), 16) / 255;
+                    customMaterial.diffuseColor = new Color3(r, g, b);
+                  } else {
+                    const colorObj = shape.color as any;
+                    customMaterial.diffuseColor = new Color3(colorObj.r || 0.7, colorObj.g || 0.7, colorObj.b || 0.7);
+                  }
+                } else {
+                  customMaterial.diffuseColor = new Color3(0.7, 0.7, 0.7);
+                }
+                
+                customMesh.material = customMaterial;
+                
+                // FIX: Store mesh reference immediately for parametric shapes
+                shapeMeshesRef.current.set(shape.id, customMesh);
+                
+                mesh = customMesh;
+                shouldFinalizeMesh = false; // Don't apply generic material - we already have custom material!
+                console.log(`Created parametric/custom mesh: ${shape.id} (${positions.length/3} vertices)`);
+              } catch (e) {
+                console.error(`Failed to create parametric/custom mesh for ${shape.id}:`, e);
+                shouldFinalizeMesh = false;
+                break;
+              }
+            } else {
+              console.warn(`Parametric/custom shape ${shape.id} has no meshData - skipping`);
+              shouldFinalizeMesh = false;
+              break;
+            }
+            break;
+          
           default:
-            // 🚨 CRITICAL FIX: Do NOT create white boxes for unrecognized types!
-            console.warn(`⚠️ Unknown shape type '${(shape as any).type}' - skipping mesh creation:`, (shape as any).id);
-            return; // Skip this iteration - don't create default white cube
+            // CRITICAL FIX: Do NOT create white boxes for unrecognized types!
+            console.warn(`Unknown shape type '${(shape as any).type}' - skipping mesh creation:`, (shape as any).id);
+            shouldFinalizeMesh = false;
+            break; // Skip this iteration - don't create default white cube
         }
         
-        // Set mesh name for identification
-        mesh.name = shape.id;
-        
-        // Apply INITIAL position, rotation, and scaling from store data
-        mesh.position = new Vector3(shape.position.x, shape.position.y, shape.position.z);
-        mesh.rotation = new Vector3(shape.rotation.x, shape.rotation.y, shape.rotation.z);
-        
-        const scaling = shape.scaling || { x: 1, y: 1, z: 1 };
-        mesh.scaling = new Vector3(scaling.x, scaling.y, scaling.z);
-        
-        // Apply material with color fallback
-        const material = new StandardMaterial(`${shape.id}_material`, sceneRef.current!);
-        
-        if (shape.color) {
-          if (typeof shape.color === 'string') {
-            const hex = shape.color.replace('#', '');
-            const r = parseInt(hex.substr(0, 2), 16) / 255;
-            const g = parseInt(hex.substr(2, 2), 16) / 255;
-            const b = parseInt(hex.substr(4, 2), 16) / 255;
-            material.diffuseColor = new Color3(r, g, b);
+        if (shouldFinalizeMesh && mesh) {
+          // Set mesh name for identification
+          mesh.name = shape.id;
+          
+          // Apply INITIAL position, rotation, and scaling from store data
+          mesh.position = new Vector3(shape.position.x, shape.position.y, shape.position.z);
+          mesh.rotation = new Vector3(
+            (shape.rotation.x || 0) * Math.PI / 180,
+            (shape.rotation.y || 0) * Math.PI / 180,
+            (shape.rotation.z || 0) * Math.PI / 180
+          );
+          
+          const scaling = shape.scaling || { x: 1, y: 1, z: 1 };
+          mesh.scaling = new Vector3(scaling.x, scaling.y, scaling.z);
+          
+          // Apply material with color fallback
+          const material = new StandardMaterial(`${shape.id}_material`, sceneRef.current!);
+          
+          if (shape.color) {
+            if (typeof shape.color === 'string') {
+              const hex = shape.color.replace('#', '');
+              const r = parseInt(hex.substr(0, 2), 16) / 255;
+              const g = parseInt(hex.substr(2, 2), 16) / 255;
+              const b = parseInt(hex.substr(4, 2), 16) / 255;
+              material.diffuseColor = new Color3(r, g, b);
+            } else {
+              const colorObj = shape.color as any;
+              material.diffuseColor = new Color3(colorObj.r || 0.7, colorObj.g || 0.7, colorObj.b || 0.7);
+            }
           } else {
-            const colorObj = shape.color as any;
-            material.diffuseColor = new Color3(colorObj.r || 0.7, colorObj.g || 0.7, colorObj.b || 0.7);
+            material.diffuseColor = new Color3(0.7, 0.7, 0.7);
           }
-        } else {
-          material.diffuseColor = new Color3(0.7, 0.7, 0.7);
+          mesh.material = material;
+          
+          // REMOVED: onAfterWorldMatrixUpdateObservable to prevent conflicts with gizmo handlers
+          // Transform sync is now handled directly by gizmo drag events for maximum smoothness
+          
+          // Store mesh reference (never clear this unless shape is deleted)
+          shapeMeshesRef.current.set(shape.id, mesh);
+          
+          console.log(`Created mesh for new shape: ${shape.id}`);
         }
-        mesh.material = material;
-        
-        // 🚀 REMOVED: onAfterWorldMatrixUpdateObservable to prevent conflicts with gizmo handlers
-        // Transform sync is now handled directly by gizmo drag events for maximum smoothness
-        
-        // Store mesh reference (never clear this unless shape is deleted)
-        shapeMeshesRef.current.set(shape.id, mesh);
-        
-        console.log(`✅ Created mesh for new shape: ${shape.id}`);
       } else {
-        // 🎯 EXISTING MESH: Update transforms to match store data
+        // EXISTING MESH: Check if geometry needs rebuilding or just transform update
         const existingMesh = shapeMeshesRef.current.get(shape.id)!;
+        
+        // CRITICAL FIX: Only rebuild geometry if vertex count ACTUALLY CHANGED
+        // Don't rebuild for every update - only when meshData is different
+        const shapeData = shape as any;
+        
+        if ((shape.type === 'parametric' || shape.type === 'custom') && 
+            shapeData.meshData && 
+            shapeData.meshData.positions && 
+            shapeData.meshData.indices) {
+          
+          const currentVertexCount = existingMesh.getTotalVertices();
+          const newVertexCount = shapeData.meshData.positions.length / 3;
+          
+          // CRITICAL FIX: Check version field for parameter changes
+          // A cube always has 24 vertices regardless of size, so vertex count check alone fails!
+          const currentVersion = (existingMesh.metadata as any)?.version || 0;
+          const newVersion = (shape as any).version || 0;
+          
+          const vertexCountChanged = currentVertexCount !== newVertexCount;
+          const versionChanged = newVersion > currentVersion;
+          
+          // Rebuild if vertex count changed OR version changed (parameters updated)
+          if (vertexCountChanged || versionChanged) {
+            console.log(`Geometry needs update for: ${shape.id}`, {
+              reason: vertexCountChanged ? 'vertex count changed' : 'version changed',
+              vertices: `${currentVertexCount} → ${newVertexCount}`,
+              version: `${currentVersion} → ${newVersion}`
+            });
+            
+            // SMOOTH UPDATE: Update geometry in-place (no dispose/recreate = no blink!)
+            try {
+              const positions = new Float32Array(shapeData.meshData.positions);
+              const indices = new Uint32Array(shapeData.meshData.indices);
+              
+              // Compute normals if not provided
+              let normals: Float32Array;
+              if (shapeData.meshData.normals) {
+                normals = new Float32Array(shapeData.meshData.normals);
+              } else {
+                const normalsArray: number[] = [];
+                VertexData.ComputeNormals(Array.from(positions), Array.from(indices), normalsArray);
+                normals = new Float32Array(normalsArray);
+              }
+              
+              // Create new vertex data
+              const vertexData = new VertexData();
+              vertexData.positions = positions;
+              vertexData.indices = indices;
+              vertexData.normals = normals;
+              
+              // SMOOTH: Update mesh geometry in-place (no dispose = no blink!)
+              vertexData.applyToMesh(existingMesh, true); // true = updatable
+              
+              // Update version in metadata
+              existingMesh.metadata = {
+                ...existingMesh.metadata,
+                version: newVersion
+              };
+              
+              console.log(`Smoothly updated geometry for: ${shape.id} (no blink!)`);
+            } catch (e) {
+              console.error(`Failed to update geometry for ${shape.id}:`, e);
+            }
+          }
+          // If vertex count AND version are same, don't rebuild - just update transforms below
+        }
         
         // Apply stored transformations to existing mesh
         existingMesh.position = new Vector3(shape.position.x, shape.position.y, shape.position.z);
-        existingMesh.rotation = new Vector3(shape.rotation.x, shape.rotation.y, shape.rotation.z);
+        
+        const rotationRadians = new Vector3(
+          (shape.rotation.x || 0) * Math.PI / 180,
+          (shape.rotation.y || 0) * Math.PI / 180,
+          (shape.rotation.z || 0) * Math.PI / 180
+        );
+        existingMesh.rotation = rotationRadians;
         
         const scaling = shape.scaling || { x: 1, y: 1, z: 1 };
         existingMesh.scaling = new Vector3(scaling.x, scaling.y, scaling.z);
+        existingMesh.setEnabled(true);
+        (existingMesh as any).isVisible = true;
         
-        console.log(`🔄 Updated existing mesh transforms for: ${shape.id}`, {
+        console.log(`Updated existing mesh transforms for: ${shape.id}`, {
           position: shape.position,
-          rotation: shape.rotation,
+          rotationDegrees: shape.rotation,
+          rotationRadians: {
+            x: rotationRadians.x,
+            y: rotationRadians.y,
+            z: rotationRadians.z
+          },
           scaling: scaling
         });
       }
     });
-    
-    // 2. REMOVE meshes that no longer exist in the shapes array
+
+    // 2. EXPERT FIX: Debounced deletions - confirm on next frame before disposing
     const existingIds = Array.from(shapeMeshesRef.current.keys());
-    existingIds.forEach((existingId) => {
-      if (!shapes.find(s => s.id === existingId)) {
-        console.log(`🗑️ Removing deleted shape mesh: ${existingId}`);
-        const mesh = shapeMeshesRef.current.get(existingId);
-        if (mesh) {
-          mesh.dispose();
-          shapeMeshesRef.current.delete(existingId);
-        }
+    const currentIds = new Set(list.map(s => s.id));
+
+    // Collect candidates for deletion (but IGNORE temporary AI meshes)
+    const toMaybeDelete: string[] = [];
+    for (const id of existingIds) {
+      // FIX: Skip temporary AI meshes (they get disposed separately)
+      if (id.startsWith('AIGeneratedShape_')) {
+        console.log(`Skipping deletion check for temporary AI mesh: ${id}`);
+        continue;
       }
-    });
+      if (!currentIds.has(id)) toMaybeDelete.push(id);
+    }
+
+    // EXPERT KEY: Confirm on next frame before disposing (prevents false positives)
+    if (toMaybeDelete.length) {
+      console.log(`🕰️ Scheduling deletion confirmation for ${toMaybeDelete.length} meshes:`, toMaybeDelete);
+      requestAnimationFrame(() => {
+        const currentShapes = useStore.getState().shapes;
+        const idsNow = new Set(currentShapes.map(s => s.id));
+        console.log(`Deletion check - Current shapes in store:`, Array.from(idsNow), `(${currentShapes.length} total)`);
+        
+        // CRITICAL FIX: If store is empty, DON'T delete anything (likely a race condition)
+        if (currentShapes.length === 0 && toMaybeDelete.length > 0) {
+          console.warn(`SAFETY: Store is empty but meshes exist - skipping deletion to prevent race condition`);
+          return;
+        }
+        
+        for (const id of toMaybeDelete) {
+          if (!idsNow.has(id)) {
+            const mesh = shapeMeshesRef.current.get(id);
+            if (mesh) {
+              console.log(`CONFIRMED delete mesh: ${id}`);
+              
+              // Properly dispose imported models with all child meshes
+              if (mesh.metadata?.isModelContainer) {
+                // This is an imported model container - dispose all children first
+                const disposeHierarchy = (node: any) => {
+                  if (node.getChildren) {
+                    const children = node.getChildren();
+                    for (const child of children) {
+                      disposeHierarchy(child);
+                    }
+                  }
+                  // Dispose materials if they exist
+                  if (node.material) {
+                    node.material.dispose();
+                  }
+                  // Dispose the mesh itself
+                  if (node.dispose) {
+                    node.dispose();
+                  }
+                };
+                
+                console.log(`Disposing imported model hierarchy for: ${id}`);
+                disposeHierarchy(mesh);
+              } else {
+                // Regular primitive mesh - simple disposal
+                mesh.dispose();
+              }
+              
+              shapeMeshesRef.current.delete(id);
+            }
+          } else {
+            console.log(`✋ CANCELLED delete mesh: ${id} (still exists in store)`);
+          }
+        }
+        sceneRef.current?.render?.();
+      });
+    }
     
-    console.log(`🎯 INCREMENTAL SYNC COMPLETE: ${shapeMeshesRef.current.size} total meshes`);
-  }, [shapes]);
+    console.log(`EXPERT SYNC COMPLETE: ${shapeMeshesRef.current.size} total meshes`);
+    // Force a render to ensure visibility updates are shown immediately
+    try { sceneRef.current?.render(); } catch {}
+  }, []); // EXPERT FIX: No deps - stable function
+
+  // EXPERT FIX: Keep a live ref to the function so subscription can call newest implementation
+  const syncShapeMeshesRef = useRef(syncShapeMeshes);
+  useEffect(() => { syncShapeMeshesRef.current = syncShapeMeshes; }, [syncShapeMeshes]);
+
+  // EXPERT FIX: Pending shapes queue for undo/redo execution
+  const pendingShapesRef = useRef<Shape[] | null>(null);
 
   // GIZMO-SAFE pointer events for selection (avoid interfering with gizmo interaction)
   const handlePointerDown = useCallback((event: React.PointerEvent<HTMLCanvasElement>) => {
@@ -766,42 +1121,49 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
     
     const pickInfo = sceneRef.current.pick(x, y);
     
-    // 🚨 CRITICAL FIX: Do NOT interfere with gizmo interactions
+    // CRITICAL FIX: Do NOT interfere with gizmo interactions
     if (pickInfo.hit && pickInfo.pickedMesh) {
       const mesh = pickInfo.pickedMesh as AbstractMesh;
+      // Default: select the exact part (child mesh). Hold Ctrl/Cmd to select the whole model container.
+      let targetMesh: AbstractMesh = mesh;
+      const sid = (mesh.metadata && (mesh.metadata.shapeId as string)) || undefined;
+      if (sid && sceneRef.current && keyboardStateRef.current.ctrl) {
+        const container = sceneRef.current.getMeshByName(sid) as AbstractMesh | null;
+        if (container) targetMesh = container;
+      }
       
       // Check if this is a gizmo mesh - if so, let the gizmo handle it
-      if (mesh.name.includes('gizmo') || mesh.name.includes('Gizmo') || 
-          mesh.parent?.name.includes('gizmo') || mesh.parent?.name.includes('Gizmo')) {
-        console.log('🎯 GIZMO INTERACTION: Letting gizmo handle the click');
+      if (targetMesh.name.includes('gizmo') || targetMesh.name.includes('Gizmo') || 
+          targetMesh.parent?.name.includes('gizmo') || targetMesh.parent?.name.includes('Gizmo')) {
+        console.log('GIZMO INTERACTION: Letting gizmo handle the click');
         return; // Do NOT interfere with gizmo interaction
       }
       
       // Handle regular mesh selection (non-gizmo meshes only)
       if (keyboardStateRef.current.shift) {
         const currentSelection = [...selectedMeshes];
-        const meshIndex = currentSelection.indexOf(mesh);
+        const meshIndex = currentSelection.indexOf(targetMesh);
         
         if (meshIndex >= 0) {
           // Remove from selection
           currentSelection.splice(meshIndex, 1);
         } else {
           // Add to selection
-          currentSelection.push(mesh);
+          currentSelection.push(targetMesh);
         }
         
         setSelectedMeshes(currentSelection);
       } else {
         // Single selection
-        setSelectedMeshes([mesh]);
+        setSelectedMeshes([targetMesh]);
       }
     } else {
-      // 🚨 CRITICAL FIX: Only clear selection if NOT interacting with gizmos
+      // CRITICAL FIX: Only clear selection if NOT interacting with gizmos
       // Check if we're clicking on utility layer (where gizmos live)
       if (gizmoLayerRef.current) {
         const utilLayerPickInfo = gizmoLayerRef.current.utilityLayerScene.pick(x, y);
         if (utilLayerPickInfo?.hit) {
-          console.log('🎯 UTILITY LAYER INTERACTION: Preserving selection for gizmo use');
+          console.log('UTILITY LAYER INTERACTION: Preserving selection for gizmo use');
           return; // Do NOT clear selection when interacting with utility layer
         }
       }
@@ -857,14 +1219,14 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
     };
   }, []);
 
-  // 🎯 OLD WORKING APPROACH: Simple gizmo mode handler
+  // OLD WORKING APPROACH: Simple gizmo mode handler
   useEffect(() => {
     if (!gizmoManagerRef.current) {
-      console.warn('⚠️ GizmoManager not available for mode change');
+      console.warn('GizmoManager not available for mode change');
       return;
     }
     
-    console.log(`🎯 Setting gizmo mode to: ${gizmoMode}`);
+    console.log(`Setting gizmo mode to: ${gizmoMode}`);
     
     // OLD WORKING PATTERN: Enable/disable gizmos based on mode
     const enabled = gizmoMode !== 'none';
@@ -873,7 +1235,7 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
     gizmoManagerRef.current.scaleGizmoEnabled = gizmoMode === 'scale' && enabled;
     gizmoManagerRef.current.boundingBoxGizmoEnabled = false; // Keep disabled
     
-    // 🔍 APPLY X-RAY EFFECT: Ensure newly created gizmos get X-ray configuration
+    // APPLY X-RAY EFFECT: Ensure newly created gizmos get X-ray configuration
     if (enabled && gizmoLayerRef.current) {
       setTimeout(() => {
         const applyXRayToCurrentGizmo = () => {
@@ -884,7 +1246,7 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
           
           gizmoMeshes.forEach((mesh: any) => {
             if (mesh.material) {
-              // 🔍 X-RAY EFFECT: Make gizmo visible through all objects
+              // X-RAY EFFECT: Make gizmo visible through all objects
               mesh.material.disableDepthWrite = true;
               mesh.material.depthFunction = 519; // ALWAYS
               mesh.material.backFaceCulling = false;
@@ -904,76 +1266,124 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
             mesh.renderingGroupId = 3;
           });
           
-          console.log(`🔍 X-ray effect applied to ${gizmoMode} gizmo`);
+          console.log(`X-ray effect applied to ${gizmoMode} gizmo`);
         };
         
         applyXRayToCurrentGizmo();
       }, 150); // Small delay to ensure gizmo is created
     }
     
-    console.log(`✅ Gizmo mode set to: ${gizmoMode}`);
+    console.log(`Gizmo mode set to: ${gizmoMode}`);
   }, [gizmoMode]);
 
-  // 🎯 OLD WORKING APPROACH: Simple gizmo selection handler
+  // OLD WORKING APPROACH: Simple gizmo selection handler
   useEffect(() => {
     if (!gizmoManagerRef.current) {
-      console.warn('⚠️ GizmoManager not available for selection update');
+      console.warn('GizmoManager not available for selection update');
       return;
     }
     
-    console.log(`🎯 Selection changed: ${selectedMeshes.length} meshes selected`);
+    console.log(`Selection changed: ${selectedMeshes.length} meshes selected`);
     
     if (selectedMeshes.length > 0) {
       const lastSelected = selectedMeshes[selectedMeshes.length - 1];
       const objectId = lastSelected.metadata?.shapeId || lastSelected.name;
-      console.log(`🎯 Attaching gizmo to: ${lastSelected.name} (${objectId})`);
+      console.log(`Attaching gizmo to: ${lastSelected.name} (${objectId})`);
       
-      // 🚀 COLLABORATIVE FEATURES: Check if object is locked by another user
+      // COLLABORATIVE FEATURES: Check if object is locked by another user
       const lockedBy = isObjectLocked && isObjectLocked(objectId);
       if (lockedBy) {
-        console.log(`🔒 COLLABORATION: Object ${objectId} is locked by ${lockedBy.email}`);
+        console.log(`COLLABORATION: Object ${objectId} is locked by ${lockedBy.email}`);
         // TODO: Show visual indicator that object is locked
         gizmoManagerRef.current.attachToMesh(null);
         return;
       }
       
-      // 🚀 COLLABORATIVE FEATURES: Lock object for editing
+      // COLLABORATIVE FEATURES: Lock object for editing
       if (startEditingObject && fileId) {
-        startEditingObject(objectId).then((canEdit) => {
+        startEditingObject(objectId).then((canEdit: boolean) => {
           if (!canEdit) {
-            console.log(`🚫 COLLABORATION: Failed to lock object ${objectId}`);
+            console.log(`COLLABORATION: Failed to lock object ${objectId}`);
             if (gizmoManagerRef.current) {
               gizmoManagerRef.current.attachToMesh(null);
             }
             return;
           }
-          console.log(`🔐 COLLABORATION: Successfully locked object ${objectId} for editing`);
+          console.log(`COLLABORATION: Successfully locked object ${objectId} for editing`);
         });
       }
       
       // OLD WORKING PATTERN: Attach gizmo to selected mesh
       gizmoManagerRef.current.attachToMesh(lastSelected);
       
-      // 🚀 COLLABORATIVE FEATURES: Wire up transform broadcasting
+      // COLLABORATIVE FEATURES: Wire up transform broadcasting
       const currentGizmo = gizmoManagerRef.current;
       if (currentGizmo && broadcastEvent) {
         // Setup transform event listeners for real-time collaboration
         const setupTransformBroadcasting = () => {
+          // Store the initial transform state BEFORE any drag starts
+          let initialTransform: any = null;
+          
           // Position gizmo events
           if (currentGizmo.gizmos.positionGizmo) {
             const posGizmo = currentGizmo.gizmos.positionGizmo;
+            // Prevent duplicate handlers across re-attaches
+            posGizmo.onDragStartObservable.clear();
+            posGizmo.onDragEndObservable.clear();
+            
+            // Capture initial state BEFORE drag
+            posGizmo.onDragStartObservable.add(() => {
+              initialTransform = {
+                position: { x: lastSelected.position.x, y: lastSelected.position.y, z: lastSelected.position.z },
+                rotation: {
+                  x: (lastSelected.rotation.x || 0) * 180 / Math.PI,
+                  y: (lastSelected.rotation.y || 0) * 180 / Math.PI,
+                  z: (lastSelected.rotation.z || 0) * 180 / Math.PI
+                },
+                scaling: { x: lastSelected.scaling.x, y: lastSelected.scaling.y, z: lastSelected.scaling.z }
+              };
+              console.log('GIZMO: Captured initial position state:', initialTransform.position);
+            });
+            
             posGizmo.onDragEndObservable.add(() => {
+              const rotationDeg = {
+                x: (lastSelected.rotation.x || 0) * 180 / Math.PI,
+                y: (lastSelected.rotation.y || 0) * 180 / Math.PI,
+                z: (lastSelected.rotation.z || 0) * 180 / Math.PI
+              };
               const newTransform = {
                 position: { x: lastSelected.position.x, y: lastSelected.position.y, z: lastSelected.position.z },
-                rotation: { x: lastSelected.rotation.x, y: lastSelected.rotation.y, z: lastSelected.rotation.z },
+                rotation: rotationDeg,
                 scaling: { x: lastSelected.scaling.x, y: lastSelected.scaling.y, z: lastSelected.scaling.z }
               };
               
-              // 🚨 CRITICAL FIX: Update local store with new transforms
-              console.log('🔄 GIZMO FIX: Updating store with position change:', objectId, newTransform);
-              updateShape(objectId, newTransform);
+              // PROPER TRANSFORM: Use undo/redo system with direct methods for position updates  
+              if (undoRedoSystem && undoRedoSystem.executeAction && initialTransform) {
+                const positionAction = {
+                  type: 'UPDATE_POSITION',
+                  description: `Move object`,
+                  data: { objectId, oldTransform: initialTransform, newTransform },
+                  redo: async () => {
+                    console.log('UNDO/REDO: Applying position with direct method:', objectId, newTransform.position);
+                    updateShapeDirectly(objectId, newTransform);
+                  },
+                  undo: async () => {
+                    console.log('UNDO/REDO: Reverting position with direct method:', objectId, initialTransform.position);
+                    updateShapeDirectly(objectId, initialTransform);
+                  }
+                };
+                
+                // Execute through undo/redo system (immediate + trackable)
+                undoRedoSystem.executeAction(positionAction);
+                console.log('PROPER GIZMO: Position updated through undo/redo system');
+              } else {
+                // Fallback: Direct update without tracking
+                console.log('FALLBACK: Updating position directly (no undo/redo available)');
+                updateShapeDirectly(objectId, newTransform);
+                console.log('FALLBACK: Position updated directly');
+              }
               
-              console.log('📡 COLLABORATION: Broadcasting position change:', objectId, newTransform);
+              console.log('COLLABORATION: Broadcasting position change:', objectId, newTransform);
               broadcastEvent({
                 event: 'transform',
                 object_id: objectId,
@@ -985,18 +1395,66 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
           // Rotation gizmo events
           if (currentGizmo.gizmos.rotationGizmo) {
             const rotGizmo = currentGizmo.gizmos.rotationGizmo;
+            // Prevent duplicate handlers across re-attaches
+            rotGizmo.onDragStartObservable.clear();
+            rotGizmo.onDragEndObservable.clear();
+            
+            // Store initial rotation state
+            let initialRotationTransform: any = null;
+            
+            // Capture initial state BEFORE drag
+            rotGizmo.onDragStartObservable.add(() => {
+              initialRotationTransform = {
+                position: { x: lastSelected.position.x, y: lastSelected.position.y, z: lastSelected.position.z },
+                rotation: {
+                  x: (lastSelected.rotation.x || 0) * 180 / Math.PI,
+                  y: (lastSelected.rotation.y || 0) * 180 / Math.PI,
+                  z: (lastSelected.rotation.z || 0) * 180 / Math.PI
+                },
+                scaling: { x: lastSelected.scaling.x, y: lastSelected.scaling.y, z: lastSelected.scaling.z }
+              };
+              console.log('GIZMO: Captured initial rotation state:', initialRotationTransform.rotation);
+            });
+            
             rotGizmo.onDragEndObservable.add(() => {
+              const rotationDeg = {
+                x: (lastSelected.rotation.x || 0) * 180 / Math.PI,
+                y: (lastSelected.rotation.y || 0) * 180 / Math.PI,
+                z: (lastSelected.rotation.z || 0) * 180 / Math.PI
+              };
               const newTransform = {
                 position: { x: lastSelected.position.x, y: lastSelected.position.y, z: lastSelected.position.z },
-                rotation: { x: lastSelected.rotation.x, y: lastSelected.rotation.y, z: lastSelected.rotation.z },
+                rotation: rotationDeg,
                 scaling: { x: lastSelected.scaling.x, y: lastSelected.scaling.y, z: lastSelected.scaling.z }
               };
               
-              // 🚨 CRITICAL FIX: Update local store with new transforms
-              console.log('🔄 GIZMO FIX: Updating store with rotation change:', objectId, newTransform);
-              updateShape(objectId, newTransform);
+              // PROPER TRANSFORM: Use undo/redo system with direct methods for rotation updates
+              if (undoRedoSystem && undoRedoSystem.executeAction && initialRotationTransform) {
+                const rotationAction = {
+                  type: 'UPDATE_ROTATION',
+                  description: `Rotate object`,
+                  data: { objectId, oldTransform: initialRotationTransform, newTransform },
+                  redo: async () => {
+                    console.log('UNDO/REDO: Applying rotation with direct method:', objectId, newTransform.rotation);
+                    updateShapeDirectly(objectId, newTransform);
+                  },
+                  undo: async () => {
+                    console.log('UNDO/REDO: Reverting rotation with direct method:', objectId, initialRotationTransform.rotation);
+                    updateShapeDirectly(objectId, initialRotationTransform);
+                  }
+                };
+                
+                // Execute through undo/redo system (immediate + trackable)
+                undoRedoSystem.executeAction(rotationAction);
+                console.log('PROPER GIZMO: Rotation updated through undo/redo system');
+              } else {
+                // Fallback: Direct update without tracking
+                console.log('FALLBACK: Updating rotation directly (no undo/redo available)');
+                updateShapeDirectly(objectId, newTransform);
+                console.log('FALLBACK: Rotation updated directly');
+              }
               
-              console.log('📡 COLLABORATION: Broadcasting rotation change:', objectId, newTransform);
+              console.log('COLLABORATION: Broadcasting rotation change:', objectId, newTransform);
               broadcastEvent({
                 event: 'transform',
                 object_id: objectId,
@@ -1008,18 +1466,66 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
           // Scale gizmo events  
           if (currentGizmo.gizmos.scaleGizmo) {
             const scaleGizmo = currentGizmo.gizmos.scaleGizmo;
+            // Prevent duplicate handlers across re-attaches
+            scaleGizmo.onDragStartObservable.clear();
+            scaleGizmo.onDragEndObservable.clear();
+            
+            // Store initial scale state
+            let initialScaleTransform: any = null;
+            
+            // Capture initial state BEFORE drag
+            scaleGizmo.onDragStartObservable.add(() => {
+              initialScaleTransform = {
+                position: { x: lastSelected.position.x, y: lastSelected.position.y, z: lastSelected.position.z },
+                rotation: {
+                  x: (lastSelected.rotation.x || 0) * 180 / Math.PI,
+                  y: (lastSelected.rotation.y || 0) * 180 / Math.PI,
+                  z: (lastSelected.rotation.z || 0) * 180 / Math.PI
+                },
+                scaling: { x: lastSelected.scaling.x, y: lastSelected.scaling.y, z: lastSelected.scaling.z }
+              };
+              console.log('GIZMO: Captured initial scale state:', initialScaleTransform.scaling);
+            });
+            
             scaleGizmo.onDragEndObservable.add(() => {
+              const rotationDeg = {
+                x: (lastSelected.rotation.x || 0) * 180 / Math.PI,
+                y: (lastSelected.rotation.y || 0) * 180 / Math.PI,
+                z: (lastSelected.rotation.z || 0) * 180 / Math.PI
+              };
               const newTransform = {
                 position: { x: lastSelected.position.x, y: lastSelected.position.y, z: lastSelected.position.z },
-                rotation: { x: lastSelected.rotation.x, y: lastSelected.rotation.y, z: lastSelected.rotation.z },
+                rotation: rotationDeg,
                 scaling: { x: lastSelected.scaling.x, y: lastSelected.scaling.y, z: lastSelected.scaling.z }
               };
               
-              // 🚨 CRITICAL FIX: Update local store with new transforms
-              console.log('🔄 GIZMO FIX: Updating store with scale change:', objectId, newTransform);
-              updateShape(objectId, newTransform);
+              // PROPER TRANSFORM: Use undo/redo system with direct methods for scaling updates
+              if (undoRedoSystem && undoRedoSystem.executeAction && initialScaleTransform) {
+                const scalingAction = {
+                  type: 'UPDATE_SCALING',
+                  description: `Scale object`,
+                  data: { objectId, oldTransform: initialScaleTransform, newTransform },
+                  redo: async () => {
+                    console.log('UNDO/REDO: Applying scaling with direct method:', objectId, newTransform.scaling);
+                    updateShapeDirectly(objectId, newTransform);
+                  },
+                  undo: async () => {
+                    console.log('UNDO/REDO: Reverting scaling with direct method:', objectId, initialScaleTransform.scaling);
+                    updateShapeDirectly(objectId, initialScaleTransform);
+                  }
+                };
+                
+                // Execute through undo/redo system (immediate + trackable)
+                undoRedoSystem.executeAction(scalingAction);
+                console.log('PROPER GIZMO: Scaling updated through undo/redo system');
+              } else {
+                // Fallback: Direct update without tracking
+                console.log('FALLBACK: Updating scaling directly (no undo/redo available)');
+                updateShapeDirectly(objectId, newTransform);
+                console.log('FALLBACK: Scaling updated directly');
+              }
               
-              console.log('📡 COLLABORATION: Broadcasting scale change:', objectId, newTransform);
+              console.log('COLLABORATION: Broadcasting scale change:', objectId, newTransform);
               broadcastEvent({
                 event: 'transform',
                 object_id: objectId,
@@ -1039,35 +1545,35 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
       gizmoManagerRef.current.rotationGizmoEnabled = gizmoMode === 'rotation' && enabled;
       gizmoManagerRef.current.scaleGizmoEnabled = gizmoMode === 'scale' && enabled;
       
-      console.log(`✅ Gizmo attached and configured for ${gizmoMode} mode with collaborative features`);
+      console.log(`Gizmo attached and configured for ${gizmoMode} mode with collaborative features`);
     } else {
-      // 🚀 COLLABORATIVE FEATURES: Release object lock when deselecting
+      // COLLABORATIVE FEATURES: Release object lock when deselecting
       if (stopEditingObject) {
         stopEditingObject();
-        console.log('🔓 COLLABORATION: Released object lock (deselected)');
+        console.log('COLLABORATION: Released object lock (deselected)');
       }
       
       // No selection - detach gizmos
-      console.log(`🚫 Detaching gizmo (no selection)`);
+      console.log(`Detaching gizmo (no selection)`);
       gizmoManagerRef.current.attachToMesh(null);
     }
   }, [selectedMeshes, gizmoMode]);
 
-  // 🎯 OLD WORKING APPROACH: Initialize GizmoManager directly in scene initialization
+  // OLD WORKING APPROACH: Initialize GizmoManager directly in scene initialization
   const handleGizmoModeChange = useCallback((mode: GizmoMode) => {
-    console.log(`🎯 GIZMO: Switching to ${mode} mode`);
+    console.log(`GIZMO: Switching to ${mode} mode`);
     setGizmoMode(mode);
   }, []);
 
   // PRODUCTION initialization
   const initializeBabylonScene = useCallback(async () => {
     if (!canvasRef.current) {
-      console.error('❌ PRODUCTION: Canvas not available');
+      console.error('PRODUCTION: Canvas not available');
       return;
     }
     
     try {
-      console.log('🎬 PRODUCTION: Starting initialization...');
+      console.log('PRODUCTION: Starting initialization...');
       setError(null);
       
       // Create engine
@@ -1090,11 +1596,26 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
       // Mark as initialized
       setIsInitialized(true);
       
-      console.log('✅ PRODUCTION: Initialization complete');
+      console.log('PRODUCTION: Initialization complete');
+      
+      // Immediately force a sync once the scene is ready to catch any shapes
+      try {
+        console.log('PRODUCTION: Forcing initial mesh sync right after initialization');
+        const currentShapes = useStore.getState().shapes;
+        syncShapeMeshes(currentShapes);
+        // Also schedule a next-tick sync to avoid any potential race with React state batching
+        requestAnimationFrame(() => {
+          console.log('PRODUCTION: Running next-frame mesh sync');
+          const latestShapes = useStore.getState().shapes;
+          syncShapeMeshes(latestShapes);
+        });
+      } catch (e) {
+        console.warn('PRODUCTION: Initial sync after init failed:', e);
+      }
       
       // Return cleanup function
       return () => {
-        console.log('🧹 PRODUCTION: Cleaning up...');
+        console.log('PRODUCTION: Cleaning up...');
         keyboardCleanup();
         stopRenderLoop();
         
@@ -1113,11 +1634,11 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
         }
       };
     } catch (err) {
-      console.error('❌ PRODUCTION: Initialization failed:', err);
+      console.error('PRODUCTION: Initialization failed:', err);
       setError(String(err));
       return undefined;
     }
-  }, []); // 🎯 CRITICAL FIX: Empty dependencies to prevent infinite re-initialization loop
+  }, []); // CRITICAL FIX: Empty dependencies to prevent infinite re-initialization loop
 
   // Initialize on mount
   useEffect(() => {
@@ -1134,12 +1655,64 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
     };
   }, [initializeBabylonScene]);
 
-  // Update shapes when store changes (incremental sync)
+  // REMOVED: Redundant React effect that was causing double mesh sync triggers
+  // The Zustand subscription below handles all mesh sync reliably
+
+  // EXPERT FIX: Single subscription with queueing and debounced deletions
   useEffect(() => {
-    if (isInitialized) {
-      syncShapeMeshes();
-    }
-  }, [shapes, isInitialized, syncShapeMeshes]);
+    console.log('EXPERT SUBSCRIBE: registering single stable subscription');
+    
+    const unsubscribe = useStore.subscribe((nextState: any, prevState: any) => {
+      const nextShapes: Shape[] = nextState.shapes;
+      const prevShapes: Shape[] = prevState?.shapes;
+
+      // Only react if the array reference actually changed
+      if (nextShapes === prevShapes) return;
+
+      console.log('EXPERT SUBSCRIBE: shapes changed', { 
+        count: nextShapes?.length ?? 0,
+        prevCount: prevShapes?.length ?? 0 
+      });
+
+      const isExecuting = nextState._undoRedoSystem?.isExecuting;
+      if (isExecuting) {
+        // Defer syncing until execution finishes
+        console.log('EXPERT SUBSCRIBE: queueing shapes during undo/redo execution');
+        pendingShapesRef.current = nextShapes;
+        return;
+      }
+
+      // Sync now using the stable ref
+      console.log('EXPERT SUBSCRIBE: syncing immediately');
+      syncShapeMeshesRef.current(nextShapes);
+      sceneRef.current?.render?.();
+    });
+    
+    return () => {
+      console.log('EXPERT SUBSCRIBE: unsubscribing single subscription');
+      try { unsubscribe && unsubscribe(); } catch {}
+    };
+  }, []); // EXPERT KEY: subscribe once, never re-register
+
+  // EXPERT FIX: Flush queued shapes after undo/redo execution completes
+  useEffect(() => {
+    let lastExecutingState = useStore.getState()._undoRedoSystem?.isExecuting;
+    const unsub = useStore.subscribe((nextState: any, _prevState: any) => {
+      const isExec = nextState._undoRedoSystem?.isExecuting;
+      const wasExec = lastExecutingState;
+      
+      if (wasExec && !isExec) {
+        console.log('EXPERT FLUSH: undo/redo execution finished, flushing queued shapes');
+        const list = pendingShapesRef.current ?? useStore.getState().shapes;
+        pendingShapesRef.current = null;
+        syncShapeMeshesRef.current(list);
+        sceneRef.current?.render?.();
+      }
+      
+      lastExecutingState = isExec;
+    });
+    return () => unsub();
+  }, []);
 
   return (
     <div 
@@ -1163,8 +1736,8 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
           touchAction: 'none'
         }}
         tabIndex={0}
-        onPointerDown={handlePointerDown} // 🎯 OLD WORKING PATTERN: React handles selection, Babylon handles gizmos
-        onMouseMove={handleMouseMove} // 🚀 COLLABORATIVE FEATURES: Track cursor for real-time sharing
+        onPointerDown={handlePointerDown} // OLD WORKING PATTERN: React handles selection, Babylon handles gizmos
+        onMouseMove={handleMouseMove} // COLLABORATIVE FEATURES: Track cursor for real-time sharing
       />
       
       {/* Gizmo Mode Controls */}
@@ -1197,7 +1770,7 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
                 textTransform: 'capitalize'
               }}
             >
-              {mode === 'position' && '↔️'} {mode === 'rotation' && '🔄'} {mode === 'scale' && '📏'} {mode === 'position' ? 'Move' : mode === 'rotation' ? 'Rotate' : 'Scale'}
+              {mode === 'position' && '↔️'} {mode === 'rotation' && ''} {mode === 'scale' && '📏'} {mode === 'position' ? 'Move' : mode === 'rotation' ? 'Rotate' : 'Scale'}
             </button>
           ))}
         </div>
@@ -1222,7 +1795,7 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
           boxShadow: '0 4px 12px rgba(232, 121, 249, 0.15)',
           fontFamily: 'monospace'
         }}>
-          <span style={{ opacity: 0.7, marginRight: '6px' }}>⚡</span>
+          <span style={{ opacity: 0.7, marginRight: '6px' }}></span>
           {selectedMeshes.length} selected · {gizmoMode}
         </div>
       )}
@@ -1243,7 +1816,7 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
           zIndex: 2000,
           boxShadow: '0 4px 16px rgba(0,0,0,0.5)'
         }}>
-          🚨 Production Error: {error}
+          Production Error: {error}
         </div>
       )}
       
@@ -1261,7 +1834,7 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
           fontSize: '16px',
           zIndex: 1000
         }}>
-          🚀 Initializing Production Viewport...
+          Initializing Production Viewport...
         </div>
       )}
     </div>

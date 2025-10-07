@@ -28,7 +28,7 @@ export default async function handler(
     // Check if file exists and delete it
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
-      console.log('✅ Cleaned up temporary model:', filePath);
+      console.log('Cleaned up temporary model:', filePath);
     }
 
     res.status(200).json({ 
@@ -37,7 +37,7 @@ export default async function handler(
     });
 
   } catch (error) {
-    console.error('❌ Error cleaning up model:', error);
+    console.error('Error cleaning up model:', error);
     res.status(500).json({ 
       message: 'Failed to cleanup model', 
       error: (error as Error).message 

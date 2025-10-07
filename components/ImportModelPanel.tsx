@@ -14,8 +14,9 @@ const ImportModelPanel: React.FC = () => {
   const [error, setError] = useState<string>('');
   const [lastImportedFile, setLastImportedFile] = useState<string>('');
 
+  // DISABLED: ImportModelPanel addShape usage causing mesh sync interference
   // Get store state and actions
-  const { addShape, selectShape } = useStore();
+  const { /* addShape, */ selectShape } = useStore();
   const { scene } = useSceneStore();
 
   // File input ref
@@ -97,12 +98,12 @@ const ImportModelPanel: React.FC = () => {
           return;
         }
 
-        // 🚨 CRITICAL FIX: DO NOT call addShape() for imported meshes!
+        // CRITICAL FIX: DO NOT call addShape() for imported meshes!
         // This was causing white cube overlays because ViewportProduction.tsx
         // creates primitive shapes for store entries, overlapping the imported mesh.
         // The imported mesh already exists from SceneLoader - no duplicate needed.
         
-        console.log(`✅ Imported mesh processed (no store duplication):`, mesh.name || `Imported Model ${index + 1}`);
+        console.log(`Imported mesh processed (no store duplication):`, mesh.name || `Imported Model ${index + 1}`);
         
         // Note: We can't get the actual ID from addShape, so we'll select the first mesh later
         if (index === 0) {
@@ -146,7 +147,7 @@ const ImportModelPanel: React.FC = () => {
         fileInputRef.current.value = '';
       }
     }
-  }, [addShape, selectShape, scene]);
+  }, [/* addShape, */ selectShape, scene]);
 
   /**
    * Handle browse button click
@@ -255,7 +256,7 @@ const ImportModelPanel: React.FC = () => {
       {/* Last Import Info */}
       {lastImportedFile && !isImporting && !error && (
         <div className="bg-green-900/20 border border-green-500/30 text-green-400 px-4 py-2 rounded-md">
-          ✅ Last imported: {lastImportedFile}
+          Last imported: {lastImportedFile}
         </div>
       )}
 
@@ -286,7 +287,7 @@ const ImportModelPanel: React.FC = () => {
 
       {/* Tips Section */}
       <div className="text-xs text-gray-400 space-y-1">
-        <p>💡 <strong>Tips:</strong></p>
+        <p><strong>Tips:</strong></p>
         <ul className="list-disc list-inside space-y-1 ml-4">
           <li>GLTF/GLB files provide the best compatibility and features</li>
           <li>Large files may take longer to import and process</li>

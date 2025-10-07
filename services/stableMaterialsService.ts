@@ -114,29 +114,49 @@ class StableMaterialsService {
       // Create textures with proxy URLs to bypass CORS
       const baseColorTexture = new Texture(this.getProxyUrl(textureStack.baseColor), scene);
       const normalTexture = new Texture(this.getProxyUrl(textureStack.normal), scene);
-      const roughnessTexture = new Texture(this.getProxyUrl(textureStack.roughness), scene);
       const metallicTexture = new Texture(this.getProxyUrl(textureStack.metallic), scene);
       const heightTexture = new Texture(this.getProxyUrl(textureStack.height), scene);
+      const aoTexture = textureStack.ao ? new Texture(this.getProxyUrl(textureStack.ao), scene) : null;
 
-      // Apply PBR textures
+      // Ensure textures tile seamlessly if the images are tileable
+      [baseColorTexture, normalTexture, metallicTexture, heightTexture, aoTexture]
+        .filter((t): t is Texture => !!t)
+        .forEach((t) => {
+          t.wrapU = Texture.WRAP_ADDRESSMODE;
+          t.wrapV = Texture.WRAP_ADDRESSMODE;
+        });
+
+      // Apply PBR textures (Metal/Rough workflow)
       material.albedoTexture = baseColorTexture;
-      material.bumpTexture = normalTexture;
-      material.metallicTexture = metallicTexture;
-      material.microSurfaceTexture = roughnessTexture;
-      
-      // Use height texture for displacement if available
-      if (textureStack.height) {
-        material.useParallax = true;
-        material.parallaxScaleBias = 0.05;
-        material.bumpTexture = heightTexture;
+      material.bumpTexture = normalTexture; // keep normal map
+      material.metallicTexture = metallicTexture; // metallic channel mapping handled by Babylon
+
+      // If AO provided, map it
+      if (aoTexture) {
+        material.ambientTexture = aoTexture;
       }
-      
-      // Set PBR properties
-      material.metallic = 0.0;
-      material.roughness = 1.0;
+
+      // NOTE: We intentionally do NOT assign roughness texture to microSurfaceTexture,
+      // as microSurface is used for the specular-glossiness workflow. If you later
+      // provide a packed metallicRoughness texture, enable Babylon's channel usage flags.
+
+      // Height/parallax: do not override normal map; only enable if explicitly desired
+      // Leaving disabled by default avoids replacing bump (normal) texture.
+      // material.useParallax = true;
+      // material.useParallaxOcclusion = true;
+      // material.parallaxScaleBias = 0.03;
+      // material.bumpTexture = heightTexture; // Would replace normal map
+
+      // Baseline PBR scalar properties
+      material.metallic = 0.0; // drive metallic via texture
+      material.roughness = 1.0; // fallback scalar roughness
       material.albedoColor = new Color3(1, 1, 1);
 
-      // Enable environment reflections
+      // Double-sided for better visibility of thin geometry
+      material.backFaceCulling = false;
+      material.twoSidedLighting = true;
+
+      // Enable environment reflections (scene env set in ViewportProduction)
       material.environmentIntensity = 1.0;
 
       console.log(`Created PBR material: ${materialName}`);
@@ -157,7 +177,7 @@ class StableMaterialsService {
     materialName?: string
   ): Promise<void> {
     try {
-      console.log('🔧 applyPBRMaterialToMesh called with:', {
+      console.log('applyPBRMaterialToMesh called with:', {
         mesh: mesh ? mesh.name : 'null',
         meshType: mesh ? mesh.constructor.name : 'null',
         hasGetScene: mesh ? typeof mesh.getScene === 'function' : false,
@@ -168,9 +188,9 @@ class StableMaterialsService {
         throw new Error('Mesh and texture stack are required');
       }
 
-      console.log('🔧 Getting scene from mesh...');
+      console.log('Getting scene from mesh...');
       const scene = mesh.getScene();
-      console.log('🔧 Scene result:', {
+      console.log('Scene result:', {
         hasScene: !!scene,
         sceneType: scene ? scene.constructor.name : 'null',
         meshDisposed: mesh.isDisposed ? mesh.isDisposed() : 'unknown'
@@ -180,14 +200,30 @@ class StableMaterialsService {
         throw new Error('Babylon.js scene not found');
       }
 
-      console.log('🔧 Creating PBR material...');
+      console.log('Creating PBR material...');
       const material = await this.createPBRMaterial(textureStack, scene, materialName);
-      console.log('🔧 Applying material to mesh...');
-      mesh.material = material;
+      console.log('Applying material to mesh...');
+      // If a transform/container was selected, apply to all child meshes
+      const hasChildren = typeof (mesh as any).getChildMeshes === 'function';
+      if (hasChildren) {
+        const children = (mesh as any).getChildMeshes(false) || [];
+        if (children.length > 0) {
+          console.log(`Applying to ${children.length} child mesh(es)`);
+          children.forEach((child: any) => {
+            if (child && 'material' in child) {
+              child.material = material;
+            }
+          });
+        } else {
+          mesh.material = material;
+        }
+      } else {
+        mesh.material = material;
+      }
       
-      console.log(`✅ Applied PBR material to mesh: ${mesh.name}`);
+      console.log(`Applied PBR material to mesh: ${mesh.name}`);
     } catch (error) {
-      console.error('❌ Error applying PBR material to mesh:', error);
+      console.error('Error applying PBR material to mesh:', error);
       throw error;
     }
   }
@@ -220,9 +256,25 @@ class StableMaterialsService {
       // Apply the texture
       material.diffuseTexture = diffuseTexture;
       material.specularColor = new Color3(0.1, 0.1, 0.1); // Reduce specular for better texture visibility
+      material.backFaceCulling = false; // match imported model double-sided behavior
       
-      // Apply material to mesh
-      mesh.material = material;
+      // Apply material to mesh or its children if it's a transform/container
+      const hasChildren = typeof (mesh as any).getChildMeshes === 'function';
+      if (hasChildren) {
+        const children = (mesh as any).getChildMeshes(false) || [];
+        if (children.length > 0) {
+          console.log(`Applying simple material to ${children.length} child mesh(es)`);
+          children.forEach((child: any) => {
+            if (child && 'material' in child) {
+              child.material = material;
+            }
+          });
+        } else {
+          mesh.material = material;
+        }
+      } else {
+        mesh.material = material;
+      }
       
       console.log(`Applied simple texture to mesh: ${mesh.name}`);
     } catch (error) {

@@ -6,6 +6,8 @@ export class PromptContextService {
   private contextCache: Map<string, string> = new Map();
   private readonly contextPath = path.join(process.cwd(), 'prompts', 'context');
   private readonly templatesPath = path.join(process.cwd(), 'prompts', 'templates');
+  private readonly examplesPath = path.join(process.cwd(), 'prompts', 'examples');
+  private readonly enhancedPromptPath = path.join(process.cwd(), 'prompts');
 
   private constructor() {}
 
@@ -44,7 +46,56 @@ export class PromptContextService {
     }
   }
 
-  buildSystemPrompt(backend: string = 'auto'): string {
+  private loadExampleFile(filename: string): string {
+    try {
+      const filePath = path.join(this.examplesPath, filename);
+      return fs.readFileSync(filePath, 'utf-8');
+    } catch (error) {
+      console.warn(`Failed to load example file: ${filename}`, error);
+      return '';
+    }
+  }
+
+  private loadEnhancedPrompt(filename: string): string {
+    try {
+      const filePath = path.join(this.enhancedPromptPath, filename);
+      return fs.readFileSync(filePath, 'utf-8');
+    } catch (error) {
+      console.warn(`Failed to load enhanced prompt: ${filename}`, error);
+      return '';
+    }
+  }
+
+  private detectDomain(userInput: string): 'mechanical' | 'architectural' | 'general' {
+    const input = userInput.toLowerCase();
+    
+    // Mechanical keywords
+    const mechanicalKeywords = [
+      'gear', 'bolt', 'nut', 'bearing', 'shaft', 'pulley', 'spring',
+      'piston', 'engine', 'motor', 'wheel', 'axle', 'coupling',
+      'flange', 'bracket', 'mount', 'screw', 'washer', 'pin',
+      'valve', 'pump', 'turbine', 'rotor', 'blade'
+    ];
+    
+    // Architectural keywords
+    const architecturalKeywords = [
+      'building', 'house', 'wall', 'door', 'window', 'roof',
+      'stair', 'column', 'beam', 'floor', 'room', 'arch',
+      'bridge', 'tower', 'truss', 'foundation', 'frame'
+    ];
+    
+    for (const keyword of mechanicalKeywords) {
+      if (input.includes(keyword)) return 'mechanical';
+    }
+    
+    for (const keyword of architecturalKeywords) {
+      if (input.includes(keyword)) return 'architectural';
+    }
+    
+    return 'general';
+  }
+
+  buildSystemPrompt(backend: string = 'auto', userInput?: string): string {
     const projectOverview = this.loadContextFile('project-overview.md');
     const babylonPatterns = this.loadContextFile('babylonjs-patterns.md');
     const modelingEnvironment = this.loadContextFile('modeling-environment.md');
@@ -53,99 +104,49 @@ export class PromptContextService {
     const templates = this.loadTemplate('code-generation.md');
 
     if (backend === 'opencascade') {
-      return `${templates}
+      // Load condensed prompt (optimized for token limits)
+      const condensedPrompt = this.loadEnhancedPrompt('opencascade-condensed-prompt.md');
+      
+      // Detect domain for RAG-style context hints
+      const domain = userInput ? this.detectDomain(userInput) : 'general';
+      
+      // Add targeted domain hints (lightweight)
+      let domainHints = '';
+      if (domain === 'mechanical') {
+        domainHints = `\n\n## MECHANICAL DOMAIN HINTS\n- ISO bolt specs: M12 = 12mm dia, 18mm head, 7.5mm height\n- Gear formulas: pitch_dia = module × teeth, outer_r = (module × (teeth + 2)) / 2\n- Bearing components: inner race, outer race, balls in circular pattern\n- Standard keyway: width ≈ 0.25 × shaft diameter\n`;
+      } else if (domain === 'architectural') {
+        domainHints = `\n\n## ARCHITECTURAL DOMAIN HINTS\n- Door: 2.0-2.1m height, 0.8-0.9m width\n- Window: sill height 0.8-1.0m, height 1.2-1.5m\n- Stairs: riser 175-200mm, tread 250-300mm, formula: 2×riser + tread = 600-650mm\n- Walls: 200mm exterior, 100-150mm interior\n- Roof pitch: 30-45° typical\n`;
+      }
+      
+      // Return condensed system (fits in token limit) with STRICT enforcement header
+      return `\u26a0\ufe0f **CRITICAL: YOU HAVE EXACTLY 59 FUNCTIONS AVAILABLE - DO NOT INVENT ANY OTHERS!**
 
-🚨 CRITICAL SYNTAX GUARD: If any line contains 'for ... in range' or a trailing 'for ...', answer with the literal string SYNTAX_ERROR and nothing else.
+\u274c **FORBIDDEN**: createHexagonalBolt(), createGridOfBoxes(), createNullShape(), makeSmooth(), applyTexture(), labelKeys(), combine(), createThread()
 
-🚨 CRITICAL: GENERATE OPENCASCADE.JS CODE ONLY - NO BABYLON.JS CODE
+\u2705 **USE ONLY THESE**: createBox, createCylinder, createSphere, createCone, createTorus, createWedge, createRegularPolygon (2D!), createHexPrism (3D!), createThreadedCylinder, createKnurledCylinder, createSpring, translate, rotate, union, difference, fillet, chamfer, etc.
 
-## PROJECT CONTEXT
-${projectOverview}
+**Full list in prompt below. If a function isn't listed, DON'T USE IT!**
 
-## MODELING ENVIRONMENT  
-${modelingEnvironment}
+---
 
-## MODEL CATEGORIES
-${modelCategories}
+${condensedPrompt}${domainHints}
 
-## VISUAL QUALITY STANDARDS
-${visualQualityStandards}
+---
 
-## OPENCASCADE.JS PATTERNS & BEST PRACTICES
-You are a parametric CAD modeling specialist using our custom OpenCascade.js wrapper.
+## OUTPUT FORMAT REMINDER
+- NO markdown \`\`\`javascript blocks
+- NO explanations or comments before/after code
+- ONLY executable JavaScript
+- Use ONLY the 59 functions documented above
+- Must return final shape
 
-🚨 CANONICAL JAVASCRIPT ARRAY PATTERNS (USE THESE EXACTLY):
-\`\`\`javascript
-const pts = Array.from({length: 6}, (_, i) => [
-  radius * Math.cos(i * Math.PI / 3),
-  radius * Math.sin(i * Math.PI / 3)
-]);
+Example output:
+const box = occ.createBox(10, 5, 3);
+return box;`;
+    }
 
-const steps = Array.from({length: numSteps}, (_, i) => i / (numSteps - 1));
-
-const coords = Array.from({length: count}, (_, i) => ({
-  x: center.x + radius * Math.cos(i * angle),
-  y: center.y + radius * Math.sin(i * angle),
-  z: center.z + i * height
-}));
-\`\`\`
-
-🚨 CRITICAL: Use ONLY the proven constructor patterns from Replicad/Cascade Studio research:
-
-CORRECT CONSTRUCTOR PATTERNS (PROVEN WORKING):
-- Geometry Creation: Use BRepBuilderAPI_MakeEdge_3(pnt1, pnt2) for lines
-- Circle Creation: Use gp_Circ_2(axis, radius) → BRepBuilderAPI_MakeEdge_8(circleGp)
-- Arc Creation: Use gp_Circ_2(axis, radius) → BRepBuilderAPI_MakeEdge_13(circle, startRad, endRad)
-- Wire Building: Use BRepBuilderAPI_MakeWire_2(edge) for single edges
-- Face Creation: Use BRepBuilderAPI_MakeFace_15(wire, false) for faces
-- Point Creation: Use gp_Pnt_3(x, y, z) for 3D points
-- Direction Creation: Use gp_Dir_4(x, y, z) for directions
-- Axis Creation: Use gp_Ax2_3(point, direction) for coordinate systems
-
-AVOID THESE BROKEN PATTERNS:
-- GC_MakeSegment_1 + BRepBuilderAPI_MakeEdge_24 (causes Handle errors)
-- GC_MakeCircle_3 with wrong parameters (parameter mismatch)
-- GC_MakeArcOfCircle_4 + BRepBuilderAPI_MakeEdge_24 (complex chain errors)
-
-MANDATORY PATTERNS:
-- Use occ.createBox(), occ.createCylinder(), occ.createSphere() for primitives
-- Use occ.extrude(), occ.revolve(), occ.sweep() for complex shapes
-- Use occ.union(), occ.difference(), occ.intersect() for booleans
-- Use occ.filletEdges(), occ.chamferEdges() for edge modifications
-- Use occ.circularPattern(), occ.linearPattern() for repetition
-- Always include tessellation: const tessellated = occ.tessellate(geometry);
-- Use parametric variables for all dimensions
-- NO Babylon.js patterns (no MeshBuilder, no BABYLON namespace)
-- Focus on precision engineering geometry
-
-AVAILABLE API FUNCTIONS:
-- Primitives: createBox, createSphere, createCylinder, createCone, createTorus
-- 2D Profiles: createCircle, createPolygon, createPolyline, createLine, createArc
-- Sweeps: extrude, revolve, sweep, loft
-- Transforms: translate, rotate, scale, mirror
-- Booleans: union, difference, intersect
-- Modifications: filletEdges, chamferEdges, shell, offset
-- Patterns: circularPattern, linearPattern
-- Utilities: makeCompound, tessellate
-
-PROVEN OPENCASCADE.JS EXAMPLES:
-\`\`\`javascript
-const radius = 1.0;
-const height = 3.0;
-const cylinder = occ.createCylinder(radius, height); 
-const tessellated = occ.tessellate(cylinder);
-
-const centerPnt = new oc.gp_Pnt_3(0, 0, 0);
-const normalDir = new oc.gp_Dir_4(0, 0, 1);
-const axis = new oc.gp_Ax2_3(centerPnt, normalDir);
-const circleGp = new oc.gp_Circ_2(axis, radius);
-const edgeMaker = new oc.BRepBuilderAPI_MakeEdge_8(circleGp);
-const wire = new oc.BRepBuilderAPI_MakeWire_2(edgeMaker.Edge());
-\`\`\`
-
-Remember: Generate ONLY OpenCascade.js code using our custom occ wrapper. NO Babylon.js code allowed.`;
-    } else {
-      return `${templates}
+    // Babylon.js system prompt
+    return `${templates}
 
 ## PROJECT CONTEXT
 ${projectOverview}
@@ -163,82 +164,216 @@ ${visualQualityStandards}
 ${babylonPatterns}
 
 Remember: Always generate production-ready, TypeScript-compatible code that integrates seamlessly with the existing Sphaire architecture.`;
-    }
   }
 
-  /**
-   * Build enhanced user prompt with context injection
-   */
   buildUserPrompt(userInput: string, type: 'model' | 'code' = 'model', backend: string = 'auto'): string {
-    // Generate backend-specific prompts
     if (backend === 'opencascade') {
-      const basePrompt = type === 'model' 
-        ? `Generate OpenCascade.js code using the custom occ wrapper to create a parametric CAD model: "${userInput}"`
-        : `Generate or enhance OpenCascade.js code for: "${userInput}"`;
+      const domain = this.detectDomain(userInput);
+      
+      // Brief domain hint
+      let hint = '';
+      if (domain === 'mechanical') {
+        hint = ' (Recall: ISO standards, gear formulas, parametric relationships)';
+      } else if (domain === 'architectural') {
+        hint = ' (Recall: building codes, standard dimensions, proportions)';
+      }
+      
+      const basePrompt = type === 'model'
+        ? `Create parametric CAD model: "${userInput}"${hint}`
+        : `Enhance code for: "${userInput}"${hint}`;
 
       return `${basePrompt}
 
-🚨 CRITICAL: YOU MUST GENERATE OPENCASCADE.JS CODE, NOT BABYLON.JS CODE
+Apply 6-phase framework: RECALL → CLASSIFY → DECOMPOSE → PLAN → VALIDATE → CODE
 
-REQUIREMENTS:
-- Use custom OpenCascade.js wrapper (occ) ONLY with PROVEN constructor patterns
-- Use occ.createBox(), occ.createCylinder(), occ.createSphere() for primitives
-- Use occ.extrude(), occ.revolve(), occ.union(), occ.difference() for complex shapes
-- Use occ.filletEdges(), occ.circularPattern() for advanced features
-- Include tessellation: occ.tessellate() for mesh conversion
-- Use parametric modeling with variables
-- NO Babylon.js patterns (no MeshBuilder, no BABYLON namespace)
-- Focus on precision CAD geometry with proven constructor patterns from Replicad research
-- Return immediately executable OCCT code
+OUTPUT: Pure JavaScript only, NO markdown blocks, NO explanations.
+- Define parameters
+- Add validation (dimensions > 0)
+- Use only occ.* functions
+- Return final shape
 
-🚨 CRITICAL CONSTRUCTOR PATTERNS (PROVEN WORKING):
-- Lines: BRepBuilderAPI_MakeEdge_3(pnt1, pnt2)
-- Circles: gp_Circ_2(axis, radius) → BRepBuilderAPI_MakeEdge_8(circleGp)
-- Arcs: gp_Circ_2(axis, radius) → BRepBuilderAPI_MakeEdge_13(circle, startRad, endRad)
-- Wires: BRepBuilderAPI_MakeWire_2(edge)
-- Points: gp_Pnt_3(x, y, z)
-- Directions: gp_Dir_4(x, y, z)
-- Avoid: GC_MakeSegment_1, GC_MakeCircle_3, GC_MakeArcOfCircle_4 patterns
+Example:
+const r = 5;
+if (r <= 0) r = 1;
+const cyl = occ.createCylinder(r, 10);
+return cyl;`;
+    }
 
-AVAILABLE FUNCTIONS:
-- Primitives: createBox, createSphere, createCylinder, createCone, createTorus
-- 2D: createCircle, createPolygon, createLine, createArc
-- Sweeps: extrude, revolve, sweep, loft
-- Transforms: translate, rotate, scale, mirror
-- Booleans: union, difference, intersect
-- Modifications: filletEdges, chamferEdges, shell, offset
-- Patterns: circularPattern, linearPattern
-- Utilities: makeCompound, tessellate
+    const basePrompt = type === 'model'
+      ? `Generate Babylon.js code to create a 3D model based on this specification: "${userInput}"`
+      : `Generate or enhance Babylon.js code for: "${userInput}"`;
 
-EXAMPLE PATTERN:
-\`\`\`javascript
-// Create parametric cylinder with custom OpenCascade wrapper
-const radius = 1.0;
-const height = 3.0;
-const cylinder = occ.createCylinder(radius, height);
-const tessellated = occ.tessellate(cylinder);
-\`\`\`
+    return basePrompt + `
 
-Focus on parametric, precision CAD modeling suitable for professional engineering workflows.`;
-    } else {
-      // Default Babylon.js prompts
-      const basePrompt = type === 'model' 
-        ? `Generate Babylon.js code to create a 3D model based on this specification: "${userInput}"`
-        : `Generate or enhance Babylon.js code for: "${userInput}"`;
-
-      return `${basePrompt}
+CRITICAL: OUTPUT ONLY EXECUTABLE JAVASCRIPT CODE - NO MARKDOWN, NO EXPLANATIONS, NO CODE BLOCKS
 
 REQUIREMENTS:
 - Create all necessary meshes, materials, and positioning
+- Use BABYLON.MeshBuilder for all meshes
 - Use unique identifiers for all objects
 - Apply appropriate materials and colors  
 - Position objects logically in 3D space
-- Ensure TypeScript compatibility
-- Follow Sphaire architectural patterns
-- Return immediately executable code
+- Store created meshes in an array called createdMeshes
+- Return the array at the end
+- NO markdown code blocks, NO explanations, ONLY executable JavaScript`;
+  }
 
-Focus on creating visually appealing, geometrically sound 3D objects suitable for a professional CAD environment.`;
-    }
+  /**
+   * Build modification prompt for existing objects
+   */
+  buildModificationPrompt(
+    userInput: string,
+    selectedShape: any,
+    sceneContext: string
+  ): string {
+    return `TASK: Modify existing object
+
+${sceneContext}
+
+USER REQUEST: "${userInput}"
+
+GENERATE MODIFICATION FUNCTION:
+Create a function that takes the existing shape and returns the modified shape.
+
+function modifyShape(existingShape) {
+  // 1. Create modification geometry (hole, slot, boss, etc.)
+  // 2. Position it correctly relative to existing shape
+  // 3. Apply boolean operation (difference, union, intersection)
+  // 4. Return modified shape
+  
+  return modifiedShape;
+}
+
+EXAMPLES:
+
+**Hole through object:**
+function modifyShape(existingShape) {
+  const holeRadius = 2.0;
+  const holeHeight = 20; // Taller than object
+  const hole = occ.createCylinder(holeRadius, holeHeight);
+  const holeCentered = occ.translate(hole, centerX, centerY, -2);
+  return occ.difference(existingShape, holeCentered);
+}
+
+**Slot on top:**
+function modifyShape(existingShape) {
+  const slotWidth = 5;
+  const slotDepth = 2;
+  const slot = occ.createBox(slotWidth, objectDepth + 2, slotDepth);
+  const slotPos = occ.translate(slot, centerX - slotWidth/2, -1, objectHeight - slotDepth);
+  return occ.difference(existingShape, slotPos);
+}
+
+**Add boss (cylindrical protrusion):**
+function modifyShape(existingShape) {
+  const bossRadius = 3;
+  const bossHeight = 2;
+  const boss = occ.createCylinder(bossRadius, bossHeight);
+  const bossPos = occ.translate(boss, centerX, centerY, objectHeight);
+  return occ.union(existingShape, bossPos);
+}
+
+**Multiple holes in pattern:**
+function modifyShape(existingShape) {
+  const hole = occ.createCylinder(1.5, 15);
+  const holePos = occ.translate(hole, patternRadius, 0, -2);
+  const holes = occ.circularPattern(holePos, 4, 90);
+  return occ.difference(existingShape, holes);
+}
+
+OUTPUT: Only the modifyShape function, no explanations.`;
+  }
+
+  /**
+   * Build transform prompt
+   */
+  buildTransformPrompt(
+    userInput: string,
+    selectedShape: any,
+    sceneContext: string
+  ): string {
+    return `TASK: Transform existing object
+
+${sceneContext}
+
+USER REQUEST: "${userInput}"
+
+CRITICAL: OUTPUT ONLY RAW JSON - NO CODE, NO MARKDOWN, NO EXPLANATIONS
+
+Return ONLY a JSON object with transformation values:
+{
+  "position": { "x": 10, "y": 0, "z": 5 },
+  "rotation": { "x": 0, "y": 45, "z": 0 },
+  "scaling": { "x": 1.5, "y": 1.5, "z": 1.5 },
+  "relative": true
+}
+
+RULES:
+- Set property to null to keep current value
+- relative: true = add to current values, false = set absolute
+- Rotation in DEGREES (not radians)
+- CRITICAL: Pay attention to axis specification (X, Y, or Z)
+- X-axis: roll (around horizontal axis)
+- Y-axis: pitch (around vertical axis)  
+- Z-axis: yaw (around depth axis)
+- For "rotate 45 degrees" with NO axis specified, use Z-axis as default
+- NO JavaScript code, NO occ.* functions, NO calculations - ONLY JSON
+
+EXAMPLES:
+
+"rotate it 45 degrees":
+{"rotation": {"x": 0, "y": 0, "z": 45}, "relative": true}
+
+"rotate 45 degrees around X axis":
+{"rotation": {"x": 45, "y": 0, "z": 0}, "relative": true}
+
+"rotate 90 degrees around Y axis":
+{"rotation": {"x": 0, "y": 90, "z": 0}, "relative": true}
+
+"rotate around Z axis by 30 degrees":
+{"rotation": {"x": 0, "y": 0, "z": 30}, "relative": true}
+
+"move it 10 units to the right":
+{"position": {"x": 10, "y": 0, "z": 0}, "relative": true}
+
+"position at (5, 5, 10)":
+{"position": {"x": 5, "y": 5, "z": 10}, "relative": false}
+
+"scale by 150%":
+{"scaling": {"x": 1.5, "y": 1.5, "z": 1.5}, "relative": false}
+
+"make it twice as big":
+{"scaling": {"x": 2, "y": 2, "z": 2}, "relative": false}
+
+OUTPUT: Only the JSON object, nothing else.`;
+  }
+
+  /**
+   * Build parameter update prompt
+   */
+  buildParameterUpdatePrompt(
+    userInput: string,
+    selectedShape: any,
+    parameter: string,
+    value: number
+  ): string {
+    return `TASK: Update parametric shape parameters
+
+SHAPE: ${selectedShape.name || selectedShape.id}
+TYPE: ${selectedShape.shapeType || selectedShape.type}
+CURRENT PARAMETERS: ${JSON.stringify(selectedShape.parameters || {})}
+
+USER REQUEST: "${userInput}"
+DETECTED UPDATE: ${parameter} = ${value}
+
+RETURN JSON:
+{
+  "${parameter}": ${value}
+}
+
+If multiple parameters need updating, include all.
+
+OUTPUT: Only JSON, no explanations.`;
   }
 
   /**

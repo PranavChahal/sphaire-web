@@ -1,0 +1,54 @@
+{
+  "name": "Sphaire3D - AI-Powered 3D Modeling",
+  "short_name": "Sphaire3D",
+  "description": "Create stunning 3D models with AI. Professional CAD tools combined with artificial intelligence for instant 3D design.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#111827",
+  "theme_color": "#ec4899",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "design", "utilities"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "New 3D Model",
+      "short_name": "New Model",
+      "description": "Create a new 3D model with AI",
+      "url": "/?action=new",
+      "icons": [
+        {
+          "src": "/favicon-96x96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "View your saved 3D models",
+      "url": "/dashboard",
+      "icons": [
+        {
+          "src": "/favicon-96x96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}

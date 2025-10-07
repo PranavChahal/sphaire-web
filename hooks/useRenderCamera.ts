@@ -67,17 +67,17 @@ const useRenderCamera = (): UseRenderCameraReturn => {
    */
   const addCameraToScene = useCallback(async (): Promise<boolean> => {
     if (!scene) {
-      console.error('🎬 Scene not available');
+      console.error('Scene not available');
       return false;
     }
 
     if (state.isActive && state.cameraMesh) {
-      console.log('🎬 Camera already exists in scene');
+      console.log('Camera already exists in scene');
       return true;
     }
 
     try {
-      console.log('🎬 Loading GLTF camera model...');
+      console.log('Loading GLTF camera model...');
 
       // Import GLTF loader
       const { SceneLoader } = await import('@babylonjs/core');
@@ -92,7 +92,7 @@ const useRenderCamera = (): UseRenderCameraReturn => {
           // Use the imported GLTF model
           cameraMesh = result.meshes[0];
           cameraMesh.name = 'renderCameraMesh';
-          console.log('✅ Loaded custom GLTF camera model');
+          console.log('Loaded custom GLTF camera model');
           
           // Scale the imported model to a reasonable size
           const boundingInfo = cameraMesh.getBoundingInfo();
@@ -104,7 +104,7 @@ const useRenderCamera = (): UseRenderCameraReturn => {
           throw new Error('No meshes found in GLTF file');
         }
       } catch (error) {
-        console.warn('⚠️ Failed to load GLTF camera model, using fallback:', error);
+        console.warn('Failed to load GLTF camera model, using fallback:', error);
         
         // Fallback: Create simple trapezium mesh
         cameraMesh = MeshBuilder.CreateBox('renderCameraMesh', {
@@ -116,7 +116,7 @@ const useRenderCamera = (): UseRenderCameraReturn => {
         // Apply scaling to create trapezium effect (taper towards front)
         cameraMesh.scaling = new Vector3(1, 1, 0.6);
         
-        console.log('📷 Using fallback trapezium camera mesh');
+        console.log('Using fallback trapezium camera mesh');
       }
       
       // Position the camera in a good default location
@@ -143,7 +143,7 @@ const useRenderCamera = (): UseRenderCameraReturn => {
       renderCamera.fov = (state.fieldOfView * Math.PI) / 180; // Convert degrees to radians
 
       // Create render target texture for live preview and capture
-      console.log('🎬 Creating render target texture...');
+      console.log('Creating render target texture...');
       const renderTexture = new RenderTargetTexture(
         'renderCameraTarget', 
         { width: 1024, height: 576 }, 
@@ -152,12 +152,12 @@ const useRenderCamera = (): UseRenderCameraReturn => {
         true
       );
       
-      console.log('🎬 Setting active camera and render targets...');
+      console.log('Setting active camera and render targets...');
       renderTexture.activeCamera = renderCamera;
       renderTexture.refreshRate = 1; // Update every frame for live preview
       scene.customRenderTargets.push(renderTexture);
       
-      console.log('🎬 Render texture setup complete:', {
+      console.log('Render texture setup complete:', {
         textureSize: renderTexture.getSize(),
         activeCamera: !!renderTexture.activeCamera,
         renderList: renderTexture.renderList?.length || 'all'
@@ -170,7 +170,7 @@ const useRenderCamera = (): UseRenderCameraReturn => {
       const gizmoManager = (scene as any).gizmoManager;
       if (gizmoManager) {
         gizmoManager.attachToMesh(cameraMesh);
-        console.log('🎬 Gizmo attached to camera mesh');
+        console.log('Gizmo attached to camera mesh');
       }
 
       setState(prev => ({
@@ -181,11 +181,11 @@ const useRenderCamera = (): UseRenderCameraReturn => {
         renderTexture,
       }));
 
-      console.log('✅ Render camera added to scene successfully');
+      console.log('Render camera added to scene successfully');
       return true;
 
     } catch (error) {
-      console.error('❌ Error adding camera to scene:', error);
+      console.error('Error adding camera to scene:', error);
       return false;
     }
   }, [scene, state.isActive, state.cameraMesh, state.fieldOfView]);
@@ -199,8 +199,8 @@ const useRenderCamera = (): UseRenderCameraReturn => {
     scene: Scene
   ): Promise<void> => {
     try {
-      console.log('📺 Creating viewfinder screen...');
-      console.log('📺 Render texture info:', {
+      console.log('Creating viewfinder screen...');
+      console.log('Render texture info:', {
         isReady: renderTexture.isReady(),
         size: renderTexture.getSize(),
         hasActiveCamera: !!renderTexture.activeCamera,
@@ -227,7 +227,7 @@ const useRenderCamera = (): UseRenderCameraReturn => {
           resolve();
         } else {
           renderTexture.onAfterRenderObservable.addOnce(() => {
-            console.log('📺 Render texture is now ready');
+            console.log('Render texture is now ready');
             resolve();
           });
         }
@@ -239,13 +239,13 @@ const useRenderCamera = (): UseRenderCameraReturn => {
       viewfinderMaterial.disableLighting = true; // Ensure it's always visible
       viewfinder.material = viewfinderMaterial;
 
-      console.log('📺 Viewfinder screen created successfully with material:', {
+      console.log('Viewfinder screen created successfully with material:', {
         hasDiffuseTexture: !!viewfinderMaterial.diffuseTexture,
         hasEmissiveTexture: !!viewfinderMaterial.emissiveTexture,
         textureIsReady: renderTexture.isReady()
       });
     } catch (error) {
-      console.error('❌ Error creating viewfinder screen:', error);
+      console.error('Error creating viewfinder screen:', error);
     }
   };
 
@@ -286,9 +286,9 @@ const useRenderCamera = (): UseRenderCameraReturn => {
         renderTexture: null,
       }));
 
-      console.log('🗑️ Render camera removed from scene');
+      console.log('Render camera removed from scene');
     } catch (error) {
-      console.error('❌ Error removing camera from scene:', error);
+      console.error('Error removing camera from scene:', error);
     }
   }, [state.isActive, state.renderTexture, state.renderCamera, state.cameraMesh]);
 
@@ -300,7 +300,7 @@ const useRenderCamera = (): UseRenderCameraReturn => {
     
     if (state.renderCamera) {
       state.renderCamera.fov = (fov * Math.PI) / 180;
-      console.log(`🎬 Camera FOV updated to ${fov}°`);
+      console.log(`Camera FOV updated to ${fov}°`);
     }
   }, [state.renderCamera]);
 
@@ -317,7 +317,7 @@ const useRenderCamera = (): UseRenderCameraReturn => {
       } else {
         state.renderTexture.refreshRate = 0; // Stop updating
       }
-      console.log(`📺 Live preview ${enabled ? 'enabled' : 'disabled'}`);
+      console.log(`Live preview ${enabled ? 'enabled' : 'disabled'}`);
     }
   }, [state.renderTexture]);
 
@@ -329,29 +329,29 @@ const useRenderCamera = (): UseRenderCameraReturn => {
       ...prev, 
       resolution: { width, height } 
     }));
-    console.log(`🎬 Render resolution set to ${width}x${height}`);
+    console.log(`Render resolution set to ${width}x${height}`);
   }, []);
 
   /**
    * Capture high-quality render
    */
   const captureHighQualityRender = useCallback(async (): Promise<string | null> => {
-    console.log('📸 Starting capture render process...');
+    console.log('Starting capture render process...');
     
     if (!state.renderCamera || !scene) {
-      console.error('🎬 Camera or scene not available for capture');
+      console.error('Camera or scene not available for capture');
       return null;
     }
 
     const engine = scene.getEngine();
     if (!engine) {
-      console.error('🎬 Engine not available for capture');
+      console.error('Engine not available for capture');
       return null;
     }
 
     try {
       const { width, height } = state.resolution;
-      console.log(`📸 Capturing at resolution: ${width}x${height}`);
+      console.log(`Capturing at resolution: ${width}x${height}`);
       
       // Store current active camera
       const originalCamera = scene.activeCamera;
@@ -361,11 +361,11 @@ const useRenderCamera = (): UseRenderCameraReturn => {
           // Store original camera
           const originalCamera = scene.activeCamera;
           
-          console.log('📸 Camera switched, taking canvas screenshot...');
+          console.log('Camera switched, taking canvas screenshot...');
           
           // Set timeout protection
           const timeoutId = setTimeout(() => {
-            console.error('❌ Screenshot timeout - restoring camera');
+            console.error('Screenshot timeout - restoring camera');
             scene.activeCamera = originalCamera;
             resolve(null);
           }, 5000);
@@ -401,35 +401,35 @@ const useRenderCamera = (): UseRenderCameraReturn => {
                   // Restore original camera
                   scene.activeCamera = originalCamera;
                   
-                  console.log('📸 Camera restored to original view');
-                  console.log(`✅ High-quality render captured successfully (${dataUrl.length} chars)`);
+                  console.log('Camera restored to original view');
+                  console.log(`High-quality render captured successfully (${dataUrl.length} chars)`);
                   resolve(dataUrl);
                 } else {
-                  console.error('❌ Failed to get canvas context');
+                  console.error('Failed to get canvas context');
                   scene.activeCamera = originalCamera;
                   resolve(null);
                 }
               } else {
-                console.error('❌ Failed to get engine canvas');
+                console.error('Failed to get engine canvas');
                 scene.activeCamera = originalCamera;
                 resolve(null);
               }
             } catch (error) {
-              console.error('❌ Error in canvas screenshot:', error);
+              console.error('Error in canvas screenshot:', error);
               scene.activeCamera = originalCamera;
               resolve(null);
             }
           });
           
         } catch (screenshotError) {
-          console.error('❌ Error in screenshot creation:', screenshotError);
+          console.error('Error in screenshot creation:', screenshotError);
           scene.activeCamera = originalCamera;
           resolve(null);
         }
       });
       
     } catch (error) {
-      console.error('❌ Error capturing render:', error);
+      console.error('Error capturing render:', error);
       return null;
     }
   }, [state.renderCamera, state.resolution, scene]);
@@ -446,9 +446,9 @@ const useRenderCamera = (): UseRenderCameraReturn => {
       link.click();
       document.body.removeChild(link);
       
-      console.log(`💾 Image saved as ${filename}`);
+      console.log(`Image saved as ${filename}`);
     } catch (error) {
-      console.error('❌ Error saving image:', error);
+      console.error('Error saving image:', error);
     }
   }, []);
 

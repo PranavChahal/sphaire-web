@@ -16,7 +16,7 @@
  * ============================================================================
  */
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 
 // Action types for undo/redo system
 export interface UndoRedoAction {
@@ -53,7 +53,7 @@ export interface UndoRedoState {
   };
 }
 
-export const useUndoRedo = (maxHistorySize: number = 50): UndoRedoState => {
+export const useUndoRedo = (maxHistorySize: number = 50, enableShortcuts: boolean = true): UndoRedoState => {
   const [history, setHistory] = useState<UndoRedoAction[]>([]);
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [isExecuting, setIsExecuting] = useState(false);
@@ -79,7 +79,7 @@ export const useUndoRedo = (maxHistorySize: number = 50): UndoRedoState => {
    */
   const executeAction = useCallback(async (actionData: Omit<UndoRedoAction, 'id' | 'timestamp'>) => {
     if (isExecuting) {
-      console.log('⚠️ UNDO/REDO: Action already executing, skipping');
+      console.log('UNDO/REDO: Action already executing, skipping');
       return;
     }
     
@@ -93,7 +93,7 @@ export const useUndoRedo = (maxHistorySize: number = 50): UndoRedoState => {
         timestamp: Date.now()
       };
       
-      console.log(`🎯 UNDO/REDO: Executing action "${action.description}"`);
+      console.log(`UNDO/REDO: Executing action "${action.description}"`);
       
       // Execute the action (redo function)
       await action.redo();
@@ -119,10 +119,10 @@ export const useUndoRedo = (maxHistorySize: number = 50): UndoRedoState => {
         return newIndex;
       });
       
-      console.log(`✅ UNDO/REDO: Action "${action.description}" executed successfully`);
+      console.log(`UNDO/REDO: Action "${action.description}" executed successfully`);
       
     } catch (error) {
-      console.error('🚨 UNDO/REDO: Error executing action:', error);
+      console.error('UNDO/REDO: Error executing action:', error);
     } finally {
       setIsExecuting(false);
     }
@@ -133,7 +133,7 @@ export const useUndoRedo = (maxHistorySize: number = 50): UndoRedoState => {
    */
   const undo = useCallback(async () => {
     if (!canUndo || isExecuting) {
-      console.log('⚠️ UNDO/REDO: Cannot undo (canUndo:', canUndo, ', isExecuting:', isExecuting, ')');
+      console.log('UNDO/REDO: Cannot undo (canUndo:', canUndo, ', isExecuting:', isExecuting, ')');
       return;
     }
     
@@ -146,10 +146,10 @@ export const useUndoRedo = (maxHistorySize: number = 50): UndoRedoState => {
       await action.undo();
       setCurrentIndex(prevIndex => prevIndex - 1);
       
-      console.log(`✅ UNDO/REDO: Action "${action.description}" undone successfully`);
+      console.log(`UNDO/REDO: Action "${action.description}" undone successfully`);
       
     } catch (error) {
-      console.error('🚨 UNDO/REDO: Error during undo:', error);
+      console.error('UNDO/REDO: Error during undo:', error);
     } finally {
       setIsExecuting(false);
     }
@@ -160,7 +160,7 @@ export const useUndoRedo = (maxHistorySize: number = 50): UndoRedoState => {
    */
   const redo = useCallback(async () => {
     if (!canRedo || isExecuting) {
-      console.log('⚠️ UNDO/REDO: Cannot redo (canRedo:', canRedo, ', isExecuting:', isExecuting, ')');
+      console.log('UNDO/REDO: Cannot redo (canRedo:', canRedo, ', isExecuting:', isExecuting, ')');
       return;
     }
     
@@ -173,10 +173,10 @@ export const useUndoRedo = (maxHistorySize: number = 50): UndoRedoState => {
       await action.redo();
       setCurrentIndex(prevIndex => prevIndex + 1);
       
-      console.log(`✅ UNDO/REDO: Action "${action.description}" redone successfully`);
+      console.log(`UNDO/REDO: Action "${action.description}" redone successfully`);
       
     } catch (error) {
-      console.error('🚨 UNDO/REDO: Error during redo:', error);
+      console.error('UNDO/REDO: Error during redo:', error);
     } finally {
       setIsExecuting(false);
     }
@@ -186,7 +186,7 @@ export const useUndoRedo = (maxHistorySize: number = 50): UndoRedoState => {
    * Clear all history
    */
   const clearHistory = useCallback(() => {
-    console.log('🧹 UNDO/REDO: Clearing history');
+    console.log('UNDO/REDO: Clearing history');
     setHistory([]);
     setCurrentIndex(-1);
   }, []);
@@ -204,9 +204,10 @@ export const useUndoRedo = (maxHistorySize: number = 50): UndoRedoState => {
   }, [history.length, currentIndex]);
   
   /**
-   * Keyboard shortcut handler
+   * Keyboard shortcut handler (optional)
    */
   useEffect(() => {
+    if (!enableShortcuts) return;
     const handleKeyDown = async (event: KeyboardEvent) => {
       // Skip if we're in an input field or textarea
       const target = event.target as HTMLElement;
@@ -225,13 +226,13 @@ export const useUndoRedo = (maxHistorySize: number = 50): UndoRedoState => {
         if (isShift) {
           // Redo: Ctrl+Shift+Z or Cmd+Shift+Z
           if (currentIndexRef.current < historyRef.current.length - 1 && !isExecutingRef.current) {
-            console.log('⌨️ UNDO/REDO: Redo triggered by keyboard shortcut');
+            console.log('UNDO/REDO: Redo triggered by keyboard shortcut');
             await redo();
           }
         } else {
           // Undo: Ctrl+Z or Cmd+Z
           if (currentIndexRef.current >= 0 && !isExecutingRef.current) {
-            console.log('⌨️ UNDO/REDO: Undo triggered by keyboard shortcut');
+            console.log('UNDO/REDO: Undo triggered by keyboard shortcut');
             await undo();
           }
         }
@@ -245,11 +246,11 @@ export const useUndoRedo = (maxHistorySize: number = 50): UndoRedoState => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [undo, redo]);
+  }, [enableShortcuts, undo, redo]);
   
   // Debug logging
   useEffect(() => {
-    console.log('🔄 UNDO/REDO: State updated', {
+    console.log('UNDO/REDO: State updated', {
       historyLength: history.length,
       currentIndex,
       canUndo,
@@ -258,7 +259,7 @@ export const useUndoRedo = (maxHistorySize: number = 50): UndoRedoState => {
     });
   }, [history.length, currentIndex, canUndo, canRedo, isExecuting]);
   
-  return {
+  const api = useMemo(() => ({
     history,
     currentIndex,
     maxHistorySize,
@@ -270,7 +271,21 @@ export const useUndoRedo = (maxHistorySize: number = 50): UndoRedoState => {
     redo,
     clearHistory,
     getHistoryInfo
-  };
+  }), [
+    history,
+    currentIndex,
+    maxHistorySize,
+    canUndo,
+    canRedo,
+    isExecuting,
+    executeAction,
+    undo,
+    redo,
+    clearHistory,
+    getHistoryInfo
+  ]);
+
+  return api;
 };
 
 /**

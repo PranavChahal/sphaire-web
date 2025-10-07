@@ -33,7 +33,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleVoice, onToggleCursor, isVoiceA
 
   const handleImport = useCallback(() => {
     if (!scene || !engine) {
-      alert('❌ Scene not ready. Please wait for the 3D environment to load.');
+      alert('Scene not ready. Please wait for the 3D environment to load.');
       return;
     }
 
@@ -48,13 +48,13 @@ const Header: React.FC<HeaderProps> = ({ onToggleVoice, onToggleCursor, isVoiceA
     const fileName = file.name.toLowerCase();
     const fileExtension = fileName.split('.').pop();
     
-    console.log('🚀 BULLETPROOF IMPORT METHOD for:', file.name);
+    console.log('BULLETPROOF IMPORT METHOD for:', file.name);
     console.log('📁 File details:', file.name, Math.round(file.size / 1024), 'KB');
     
     // Validate supported formats
     const supportedFormats = ['glb', 'gltf', 'obj', 'stl'];
     if (!fileExtension || !supportedFormats.includes(fileExtension)) {
-      alert(`❌ Unsupported file format: .${fileExtension}\n\nSupported: ${supportedFormats.join(', ')}`);
+      alert(`Unsupported file format: .${fileExtension}\n\nSupported: ${supportedFormats.join(', ')}`);
       return;
     }
     
@@ -65,7 +65,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleVoice, onToggleCursor, isVoiceA
       
       // BULLETPROOF METHOD: ArrayBuffer + Data URI approach
       const arrayBuffer = await file.arrayBuffer();
-      console.log('✅ File read as ArrayBuffer:', arrayBuffer.byteLength, 'bytes');
+      console.log('File read as ArrayBuffer:', arrayBuffer.byteLength, 'bytes');
       
       // Convert ArrayBuffer to base64 data URI (chunked approach for large files)
       const chunkSize = 0x8000; // 32KB chunks to prevent stack overflow
@@ -84,16 +84,16 @@ const Header: React.FC<HeaderProps> = ({ onToggleVoice, onToggleCursor, isVoiceA
                       fileExtension === 'stl' ? 'model/stl' : 'application/octet-stream';
       
       const dataUri = `data:${mimeType};base64,${base64String}`;
-      console.log('✅ Created data URI:', dataUri.substring(0, 100) + '...');
+      console.log('Created data URI:', dataUri.substring(0, 100) + '...');
       
       // Initialize scene metadata if needed
       if (!scene.metadata) {
         scene.metadata = {};
       }
-      // 🚨 UNIFIED STORE ARCHITECTURE: No longer using scene.metadata.importedMeshes
+      // UNIFIED STORE ARCHITECTURE: No longer using scene.metadata.importedMeshes
       // All model data is now stored in the unified store for perfect serialization
       
-      console.log('🚀 Starting SceneLoader.ImportMeshAsync with data URI...');
+      console.log('Starting SceneLoader.ImportMeshAsync with data URI...');
       
       // Use SceneLoader.ImportMeshAsync with data URI
       const result = await SceneLoader.ImportMeshAsync(
@@ -103,8 +103,8 @@ const Header: React.FC<HeaderProps> = ({ onToggleVoice, onToggleCursor, isVoiceA
         scene // scene to import into
       );
       
-      console.log('✅ SceneLoader.ImportMeshAsync completed successfully');
-      console.log('📊 Import result:', {
+      console.log('SceneLoader.ImportMeshAsync completed successfully');
+      console.log('Import result:', {
         meshes: result.meshes.length,
         skeletons: result.skeletons?.length || 0,
         animationGroups: result.animationGroups?.length || 0
@@ -116,19 +116,19 @@ const Header: React.FC<HeaderProps> = ({ onToggleVoice, onToggleCursor, isVoiceA
       if (result.meshes && result.meshes.length > 0) {
         result.meshes.forEach((mesh, index) => {
           if (mesh.name && mesh.name !== '__root__') {
-            console.log(`🔄 Processing imported mesh ${index + 1}:`, mesh.name);
+            console.log(`Processing imported mesh ${index + 1}:`, mesh.name);
             
             // Ensure mesh is visible and properly configured
             mesh.isVisible = true;
             mesh.setEnabled(true);
             
-            // 🚨 FIX: DO NOT call addShape() for imported meshes!
+            // FIX: DO NOT call addShape() for imported meshes!
             // This was causing white cube overlays because createShapeMeshes() 
             // creates primitive shapes for store entries, overlapping the imported mesh.
             // The imported mesh already exists from SceneLoader - no duplicate needed.
             
             const shapeId = `imported_${Date.now()}_${index}`;
-            console.log(`✅ Imported mesh processed (no store duplication):`, shapeId, mesh.name);
+            console.log(`Imported mesh processed (no store duplication):`, shapeId, mesh.name);
             
             // Store mesh metadata
             const importedMeshData = {
@@ -140,8 +140,8 @@ const Header: React.FC<HeaderProps> = ({ onToggleVoice, onToggleCursor, isVoiceA
               babylonMesh: mesh,
               name: mesh.name || `Imported Mesh ${index + 1}`
             };
-            // 🚨 UNIFIED STORE ARCHITECTURE: Legacy metadata push removed
-            console.log(`🔄 IMPORT: Added mesh ${index + 1} to scene.metadata:`, importedMeshData.name);
+            // UNIFIED STORE ARCHITECTURE: Legacy metadata push removed
+            console.log(`IMPORT: Added mesh ${index + 1} to scene.metadata:`, importedMeshData.name);
             
             importedCount++;
           }
@@ -151,7 +151,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleVoice, onToggleCursor, isVoiceA
         
         // Force scene update and render
         scene.render();
-        console.log('✅ Forced scene render');
+        console.log('Forced scene render');
         
         // Select first imported mesh
         if (importedCount > 0) {
@@ -161,17 +161,17 @@ const Header: React.FC<HeaderProps> = ({ onToggleVoice, onToggleCursor, isVoiceA
         // Update scene in store
         setScene(scene);
         
-        alert(`🎉 IMPORT SUCCESS!\n\n${importedCount} meshes imported from ${file.name}\n\nModel ready for editing!`);
+        alert(`IMPORT SUCCESS!\n\n${importedCount} meshes imported from ${file.name}\n\nModel ready for editing!`);
       } else {
-        console.warn('⚠️ No meshes found in imported scene');
-        alert(`⚠️ Import completed but no visible meshes found in ${file.name}`);
+        console.warn('No meshes found in imported scene');
+        alert(`Import completed but no visible meshes found in ${file.name}`);
       }
       
       setIsImporting(false);
       
     } catch (error) {
-      console.error('❌ BULLETPROOF import failed:', error);
-      alert(`❌ Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('BULLETPROOF import failed:', error);
+      alert(`Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setIsImporting(false);
     }
     
@@ -183,7 +183,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleVoice, onToggleCursor, isVoiceA
 
   const handleExport = useCallback(async (format: string) => {
     if (!scene) {
-      alert('❌ Scene not ready. Please wait for the 3D environment to load.');
+      alert('Scene not ready. Please wait for the 3D environment to load.');
       return;
     }
 
@@ -198,7 +198,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleVoice, onToggleCursor, isVoiceA
           // Get all meshes from the scene
           const meshes = scene.meshes.filter(mesh => mesh.geometry && mesh.isVisible);
           if (meshes.length === 0) {
-            alert('❌ No meshes to export. Please add some 3D objects to the scene.');
+            alert('No meshes to export. Please add some 3D objects to the scene.');
             return;
           }
           
@@ -212,7 +212,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleVoice, onToggleCursor, isVoiceA
         case 'OBJ': {
           const meshes = scene.meshes.filter(mesh => mesh.geometry && mesh.isVisible);
           if (meshes.length === 0) {
-            alert('❌ No meshes to export. Please add some 3D objects to the scene.');
+            alert('No meshes to export. Please add some 3D objects to the scene.');
             return;
           }
           
@@ -236,25 +236,25 @@ const Header: React.FC<HeaderProps> = ({ onToggleVoice, onToggleCursor, isVoiceA
         }
         
         default:
-          alert('❌ Unsupported export format.');
+          alert('Unsupported export format.');
           return;
       }
       
-      alert(`✅ Export successful! Your ${format} file has been downloaded.`);
+      alert(`Export successful! Your ${format} file has been downloaded.`);
       
     } catch (error) {
-      console.error('❌ Export failed:', error);
-      alert(`❌ Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('Export failed:', error);
+      alert(`Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsExporting(false);
     }
   }, [scene]);
 
   const exportFormats = [
-    { name: 'STL', description: 'For 3D printing', icon: '🖨️' },
-    { name: 'OBJ', description: 'Universal 3D format', icon: '📦' },
+    { name: 'STL', description: 'For 3D printing', icon: '' },
+    { name: 'OBJ', description: 'Universal 3D format', icon: '' },
     { name: 'GLTF', description: 'Web-optimized scene', icon: '🌐' },
-    { name: 'STEP', description: 'CAD format (beta)', icon: '⚙️' }
+    { name: 'STEP', description: 'CAD format (beta)', icon: '' }
   ];
 
   return (
@@ -362,7 +362,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleVoice, onToggleCursor, isVoiceA
               : 'bg-black text-pink-400 hover:text-pink-300 border-pink-400/20 hover:border-pink-400/40'
           }`}
         >
-          {isVoiceActive ? '🎤️ Stop Voice' : '🎤️ Voice'}
+          {isVoiceActive ? '️ Stop Voice' : '️ Voice'}
         </button>
         
         <button

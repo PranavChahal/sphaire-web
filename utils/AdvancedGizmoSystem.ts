@@ -3,12 +3,12 @@
  * 
  * Complete rewrite of transform controls (move/scale/rotate) following official Babylon.js patterns
  * Features:
- * ✅ Official GizmoManager and Position/Rotation/Scale Gizmo patterns
- * ✅ Multi-mesh support with bounding box gizmo
- * ✅ Snap functionality for precision CAD work
- * ✅ Undo/redo integration
- * ✅ Performance optimization with proper disposal
- * ✅ Error-proof operation with extensive validation
+ * Official GizmoManager and Position/Rotation/Scale Gizmo patterns
+ * Multi-mesh support with bounding box gizmo
+ * Snap functionality for precision CAD work
+ * Undo/redo integration
+ * Performance optimization with proper disposal
+ * Error-proof operation with extensive validation
  */
 
 import {
@@ -105,7 +105,7 @@ export class AdvancedGizmoSystem {
    */
   private initialize(): void {
     try {
-      console.log('🎯 AdvancedGizmoSystem: Initializing with official Babylon.js patterns...');
+      console.log('AdvancedGizmoSystem: Initializing with official Babylon.js patterns...');
       
       // Create utility layer renderer for proper gizmo rendering
       this.utilityLayerRenderer = new UtilityLayerRenderer(this.scene, false);
@@ -129,10 +129,10 @@ export class AdvancedGizmoSystem {
       // Set initial mode
       this.setMode('none');
       
-      console.log('✅ AdvancedGizmoSystem: Initialization complete with all gizmos ready');
+      console.log('AdvancedGizmoSystem: Initialization complete with all gizmos ready');
       
     } catch (error) {
-      console.error('🚨 AdvancedGizmoSystem: Error during initialization:', error);
+      console.error('AdvancedGizmoSystem: Error during initialization:', error);
       throw new Error(`Failed to initialize AdvancedGizmoSystem: ${error}`);
     }
   }
@@ -159,7 +159,7 @@ export class AdvancedGizmoSystem {
       const utilityCamera = this.utilityLayerRenderer.utilityLayerScene.activeCamera;
       utilityCamera.layerMask = this.camera.layerMask;
       
-      console.log('✅ AdvancedGizmoSystem: Camera and layer mask configured');
+      console.log('AdvancedGizmoSystem: Camera and layer mask configured');
     }
   }
 
@@ -279,7 +279,7 @@ export class AdvancedGizmoSystem {
     this.boundingBoxGizmo.scaleRatio = this.settings.scaleRatio;
     this.boundingBoxGizmo.rotationSphereSize = 0.1;
     // Note: scalePivotSize may not be available in all Babylon.js versions
-    console.log('✅ BoundingBoxGizmo configured with scaleRatio:', this.settings.scaleRatio);
+    console.log('BoundingBoxGizmo configured with scaleRatio:', this.settings.scaleRatio);
     
     // Setup transform callbacks
     this.boundingBoxGizmo.onDragStartObservable.add(() => {
@@ -307,7 +307,7 @@ export class AdvancedGizmoSystem {
       return;
     }
     
-    console.log(`🎯 AdvancedGizmoSystem: Setting mode to ${mode}`);
+    console.log(`AdvancedGizmoSystem: Setting mode to ${mode}`);
     
     // Disable all gizmos first
     this.disableAllGizmos();
@@ -319,7 +319,7 @@ export class AdvancedGizmoSystem {
       this.enableGizmoForMode(mode);
     }
     
-    console.log(`✅ AdvancedGizmoSystem: Mode set to ${mode}`);
+    console.log(`AdvancedGizmoSystem: Mode set to ${mode}`);
   }
 
   /**
@@ -345,7 +345,7 @@ export class AdvancedGizmoSystem {
     
     this.attachedMeshes = validMeshes;
     
-    console.log(`🎯 AdvancedGizmoSystem: Attaching to ${validMeshes.length} mesh(es)`);
+    console.log(`AdvancedGizmoSystem: Attaching to ${validMeshes.length} mesh(es)`);
     
     // Enable appropriate gizmo for current mode
     if (this.currentMode !== 'none') {
@@ -357,7 +357,7 @@ export class AdvancedGizmoSystem {
    * Detach gizmo from all meshes
    */
   public detachFromMeshes(): void {
-    console.log('🎯 AdvancedGizmoSystem: Detaching from all meshes');
+    console.log('AdvancedGizmoSystem: Detaching from all meshes');
     
     this.disableAllGizmos();
     this.attachedMeshes = [];
@@ -524,7 +524,7 @@ export class AdvancedGizmoSystem {
   public updateSettings(newSettings: Partial<GizmoSettings>): void {
     this.settings = { ...this.settings, ...newSettings };
     this.applySettings();
-    console.log('✅ AdvancedGizmoSystem: Settings updated');
+    console.log('AdvancedGizmoSystem: Settings updated');
   }
 
   /**
@@ -567,7 +567,7 @@ export class AdvancedGizmoSystem {
   public dispose(): void {
     if (this.disposed) return;
     
-    console.log('🧹 AdvancedGizmoSystem: Disposing...');
+    console.log('AdvancedGizmoSystem: Disposing...');
     
     // Dispose individual gizmos
     if (this.positionGizmo) {
@@ -612,7 +612,7 @@ export class AdvancedGizmoSystem {
     this.currentMode = 'none';
     this.disposed = true;
     
-    console.log('✅ AdvancedGizmoSystem: Disposed successfully');
+    console.log('AdvancedGizmoSystem: Disposed successfully');
   }
 }
 

@@ -58,7 +58,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'File and extension required' });
     }
 
-    console.log('🚀 Processing model:', file.originalFilename, 'Extension:', extension);
+    console.log('Processing model:', file.originalFilename, 'Extension:', extension);
 
     // Read file content
     const fileContent = fs.readFileSync(file.filepath);
@@ -81,7 +81,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const jsonPath = path.join(processedDir, `${baseName}.json`);
       fs.writeFileSync(jsonPath, JSON.stringify(parsedData, null, 2));
       
-      console.log('✅ OBJ processed and saved as JSON:', jsonPath);
+      console.log('OBJ processed and saved as JSON:', jsonPath);
       
       return res.status(200).json({
         success: true,
@@ -98,7 +98,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const outputPath = path.join(processedDir, `${baseName}${extension}`);
       fs.writeFileSync(outputPath, fileContent);
       
-      console.log('✅ Model saved for direct import:', outputPath);
+      console.log('Model saved for direct import:', outputPath);
       
       return res.status(200).json({
         success: true,
@@ -111,7 +111,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
   } catch (error) {
-    console.error('❌ Model processing error:', error);
+    console.error('Model processing error:', error);
     return res.status(500).json({ 
       error: 'Model processing failed',
       details: error instanceof Error ? error.message : String(error)
