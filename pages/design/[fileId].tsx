@@ -10,6 +10,7 @@ import VoiceModule from '../../components/VoiceModule'
 import { useUIStore } from '../../store/uiStore'
 import useStore from '../../store/store'
 import { ModalProvider } from '../../contexts/ModalContext'
+import { DesignFile } from '../../lib/supabase'
 
 const DesignFilePage = () => {
   // State variables removed - authentication disabled

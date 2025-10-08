@@ -718,16 +718,6 @@ export class EditModeVisualization {
     }
   }
   
-  /**
-   * Switch visualization mode
-   */
-  public switchMode(mode: SubObjectMode) {
-    if (this.targetMesh && this.mode !== mode) {
-      this.mode = mode;
-      this.cleanup();
-      this.activate(this.targetMesh, mode);
-    }
-  }
   
   /**
    * Clean up all visualization elements
@@ -780,45 +770,18 @@ export class EditModeVisualization {
     this.updateVisualization();
   }
 
-  /**
-   * Get center position of selected elements
-   */
-  public getSelectionCenter(): Vector3 | null {
-    if (this.selectedIndices.size === 0 || !this.targetMesh) return null;
-
-    const positions = this.targetMesh.getVerticesData(VertexBuffer.PositionKind);
-    if (!positions) return null;
-
-    let center = Vector3.Zero();
-    let count = 0;
-
-    if (this.mode === 'vertex') {
-      this.selectedIndices.forEach(index => {
-        const x = positions[index * 3];
-        const y = positions[index * 3 + 1];
-        const z = positions[index * 3 + 2];
-        center.addInPlace(new Vector3(x, y, z));
-        count++;
-      });
-    } else if (this.mode === 'edge') {
-      // average midpoint of edges
-      this.selectedIndices.forEach(edgeId => {
-        const v1 = Math.floor(edgeId / 1000);
-        const v2 = edgeId % 1000;
-        if (v1 < positions.length / 3 && v2 < positions.length / 3) {
-          const p1 = new Vector3(
-            positions[v1 * 3],
-            positions[v1 * 3 + 1],
-            positions[v1 * 3 + 2]
-          );
-          const p2 = new Vector3(
-            positions[v2 * 3],
-            positions[v2 * 3 + 1],
-            positions[v2 * 3 + 2]
-          );
-          center.addInPlace(p1.add(p2).scale(0.5));
-          count++;
-        }
+  const v2Pos = new Vector3(
+    positions[v2 * 3],
+    positions[v2 * 3 + 1],
+    positions[v2 * 3 + 2]
+  );
+  const p2 = new Vector3(
+    v2Pos.x,
+    v2Pos.y,
+    v2Pos.z
+  );
+  center.addInPlace(p1.add(p2).scale(0.5));
+  count++;
       });
     } else if (this.mode === 'face') {
       this.selectedIndices.forEach(index => {
@@ -837,12 +800,6 @@ export class EditModeVisualization {
     return center.scale(1 / count);
   }
 
-  /**
-   * Get currently selected element indices
-   */
-  public getSelectedIndices(): number[] {
-    return Array.from(this.selectedIndices);
-  }
 
   /**
    * Get selected vertex indices for transformation

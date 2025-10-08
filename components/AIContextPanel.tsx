@@ -10,7 +10,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { ChevronDown, ChevronUp, Target, Sparkles, Settings, Zap } from 'lucide-react';
 import { useAIModelingContextAware } from '@/hooks/useAIModelingContextAware';
-import { explainIntent, UserIntent } from '@/services/intentDetector';
+import { UserIntent } from '@/services/intentDetector';
 import useStore from '@/store/store';
 import { ParametricShape } from '@/store/store';
 import { occMainThreadExecutor } from '@/services/occMainThreadExecutor';
@@ -158,7 +158,6 @@ export const AIContextPanel: React.FC<AIContextPanelProps> = ({ className = '' }
    * Toast notification
    */
   const showToast = (message: string, type: 'success' | 'error') => {
-    const icon = type === 'success' ? '' : '';
     console.log(`[${type.toUpperCase()}] ${message}`);
     
     // Set local error for display

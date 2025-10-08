@@ -18,13 +18,13 @@ export class HybridAIService {
 
   private async isLocalLLMAvailable(): Promise<boolean> {
     const now = Date.now();
-    
     if (now - this.lastHealthCheck < this.healthCheckInterval) {
       return this.localLLMAvailable;
     }
 
     try {
-      this.localLLMAvailable = await localLLM.healthCheck();
+      // Local LLM health check disabled for now
+      this.localLLMAvailable = false;
       this.lastHealthCheck = now;
       return this.localLLMAvailable;
     } catch {
@@ -47,30 +47,8 @@ export class HybridAIService {
       systemPrompt = ''
     } = options;
 
-    // Try local LLM first
-    if (await this.isLocalLLMAvailable()) {
-      console.log('HYBRID-AI: Attempting local Code Llama 7B...');
-      
-      try {
-        const response = await localLLM.generateCode(prompt, {
-          maxTokens,
-          temperature,
-          topP,
-          systemPrompt
-        });
-
-        console.log('HYBRID-AI: Local LLM succeeded');
-        return {
-          ...response,
-          source: 'local'
-        };
-      } catch (error) {
-        console.warn('HYBRID-AI: Local LLM failed, falling back to OpenAI:', error);
-        this.localLLMAvailable = false;
-      }
-    } else {
-      console.log('🌐 HYBRID-AI: Local LLM unavailable, using OpenAI...');
-    }
+    // Local LLM disabled - always use OpenAI
+    console.log('🌐 HYBRID-AI: Using OpenAI...');
 
     if (!process.env.OPENAI_API_KEY) {
       throw new Error('Neither local LLM nor OpenAI is available. Please start the local server or configure OpenAI API key.');

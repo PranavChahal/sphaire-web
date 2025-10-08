@@ -9,9 +9,10 @@
 
 import React, { useState } from 'react';
 import { useParametricModeling } from '../hooks/useParametricModeling';
+import { useBabylon } from '../contexts/BabylonContext';
 
 export function ParametricQuickTest() {
-  const { scene } = useStore((state) => ({ scene: state.babylonScene }));
+  const { scene } = useBabylon();
   const { 
     isInitialized, 
     isLoading, 
@@ -191,5 +192,3 @@ export function ParametricQuickTest() {
   );
 }
 
-// Import useStore
-import useStore from '../store/store';

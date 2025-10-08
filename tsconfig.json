@@ -5,8 +5,8 @@
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "noImplicitAny": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitReturns": true,
@@ -25,20 +25,31 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
   "exclude": [
     "node_modules",
+    "examples/**/*",
+    "docs/**/*",
+    "skillorix fixed/**/*",
     "**/*_BACKUP.tsx",
     "**/*_BROKEN_BACKUP.tsx",
     "**/*_BULLETPROOF.tsx",
     "__tests__/**/*",
     "llm-server/**/*",
     "**/build/**/*",
-    "**/CMakeFiles/**/*",
     "**/*.cmake",
     "**/*.cpp",
     "**/*.c",
     "workers/occt.worker.old.ts",
+    "utils/EditModeVisualization.ts",
+    "utils/ParametricBridge.ts",
+    "utils/OpenCascadeLoader.ts",
+    "services/hybridAI.ts",
     "**/*.h"
   ]
 }

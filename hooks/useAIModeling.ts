@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Scene, AbstractMesh, Mesh } from '@babylonjs/core';
+import { Scene, AbstractMesh } from '@babylonjs/core';
 import { occMainThreadExecutor } from '@/services/occMainThreadExecutor';
 
 export interface AIModelRequest {

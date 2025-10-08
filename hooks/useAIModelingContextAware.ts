@@ -4,10 +4,9 @@
  */
 
 import { useState, useCallback } from 'react';
-import { Scene } from '@babylonjs/core';
 import { occMainThreadExecutor } from '@/services/occMainThreadExecutor';
-import { serializeSceneContext, getCompactSceneContext } from '@/services/sceneContextSerializer';
-import { detectIntent, UserIntent, explainIntent, extractNumbers, extractAxis } from '@/services/intentDetector';
+import { getCompactSceneContext } from '@/services/sceneContextSerializer';
+import { detectIntent, UserIntent, explainIntent } from '@/services/intentDetector';
 import { 
   executeModification, 
   applyTransform, 
@@ -163,14 +162,14 @@ export const useAIModelingContextAware = () => {
     console.log('✏️ CONTEXT-AI: Modifying existing object');
     
     // Get scene context
-    const sceneContext = serializeSceneContext(shapes, selectedShapeId);
+    // const sceneContext = serializeSceneContext(shapes, selectedShapeId);
     const compactContext = getCompactSceneContext(shapes, selectedShapeId);
     
     console.log('📋 Scene context:', compactContext);
     
     // Build modification-specific prompt
     const selectedShape = shapes.find(s => s.id === selectedShapeId)!;
-    const systemPrompt = promptContext.buildSystemPrompt('opencascade', prompt);
+    // const systemPrompt = promptContext.buildSystemPrompt('opencascade', prompt);
     const userPrompt = promptContext.buildModificationPrompt(
       prompt,
       selectedShape,
@@ -236,7 +235,7 @@ export const useAIModelingContextAware = () => {
     const selectedShape = shapes.find(s => s.id === selectedShapeId)!;
     
     // Build transform-specific prompt
-    const systemPrompt = promptContext.buildSystemPrompt('opencascade', prompt);
+    // const systemPrompt = promptContext.buildSystemPrompt('opencascade', prompt);
     const userPrompt = promptContext.buildTransformPrompt(
       prompt,
       selectedShape,
@@ -283,7 +282,7 @@ export const useAIModelingContextAware = () => {
    * Handle UPDATE_PARAMETERS intent
    */
   async function handleParameterUpdate(
-    prompt: string,
+    _prompt: string,
     shapes: Shape[],
     selectedShapeId: string,
     parameter: string,
