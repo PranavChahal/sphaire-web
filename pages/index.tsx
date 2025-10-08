@@ -1,6 +1,5 @@
 import type { NextPage } from 'next';
-import React, { useEffect } from 'react';
-import { useRouter } from 'next/router';
+import React from 'react';
 import SEOHead from '../components/SEOHead';
 import HeaderPerfect from '../components/HeaderPerfect';
 import { ViewportProduction } from '../components/ViewportProduction';
@@ -9,21 +8,11 @@ import VoiceModule from '../components/VoiceModule';
 import AIContextPanel from '../components/AIContextPanel';
 import { useUIStore } from '../store/uiStore';
 import { ModalProvider } from '../contexts/ModalContext';
-import { useAuth } from '../contexts/AuthContext';
 import ProtectedRoute from '../components/ProtectedRoute';
 
 const Home: NextPage = () => {
   console.log('Rendering Home component');
   const { activeTab, setActiveTab } = useUIStore();
-  const { user } = useAuth();
-  const router = useRouter();
-  
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!user) {
-      router.push('/login');
-    }
-  }, [user, router]);
   
   console.log('Home component useEffect setup complete');
   return (

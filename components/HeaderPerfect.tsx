@@ -13,6 +13,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { useThingiSearch } from '../hooks/useThingiSearch';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 
 
 interface HeaderPerfectProps {
@@ -1012,17 +1013,81 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = React.memo(() => {
         }
       };
       
-      // Save locally (authentication removed)
-      // Convert to JSON and download
+      // Save to Supabase cloud
+      if (!user) {
+        showAlert(
+          'Not Signed In',
+          'Please sign in to save your design to the cloud.',
+          'error'
+        );
+        return;
+      }
+
       const json = JSON.stringify(sceneData, null, 2);
-      const blob = new Blob([json], { type: 'application/json' });
-      const filename = `sphaire-design-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
-      downloadBlob(blob, filename);
-      showAlert(
-        'Design Exported',
-        'Your design has been exported as a local file!',
-        'success'
-      );
+      
+      // Check if we're editing an existing file (from URL)
+      const fileId = router.query.fileId as string | undefined;
+      
+      if (fileId) {
+        // Update existing file
+        const { error: updateError } = await supabase
+          .from('design_files')
+          .update({
+            content: json,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', fileId)
+          .eq('user_id', user.id);
+        
+        if (updateError) {
+          console.error('Update error:', updateError);
+          showAlert(
+            'Save Failed',
+            `Failed to save design: ${updateError.message}`,
+            'error'
+          );
+          return;
+        }
+        
+        showAlert(
+          'Design Saved',
+          'Your design has been saved to the cloud!',
+          'success'
+        );
+      } else {
+        // Create new file
+        const fileName = `Design ${new Date().toLocaleDateString()}`;
+        const { data, error: insertError } = await supabase
+          .from('design_files')
+          .insert({
+            name: fileName,
+            content: json,
+            user_id: user.id,
+            is_shared: false
+          })
+          .select()
+          .single();
+        
+        if (insertError) {
+          console.error('Insert error:', insertError);
+          showAlert(
+            'Save Failed',
+            `Failed to save design: ${insertError.message}`,
+            'error'
+          );
+          return;
+        }
+        
+        if (data) {
+          // Navigate to the new file's page
+          router.push(`/design/${data.id}`);
+          showAlert(
+            'Design Saved',
+            'Your design has been saved to the cloud!',
+            'success'
+          );
+        }
+      }
     } catch (error) {
       console.error('Failed to save design:', error);
       showAlert(
@@ -1031,7 +1096,7 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = React.memo(() => {
         'error'
       );
     }
-  }, [scene, shapes, router, showAlert]);
+  }, [scene, shapes, router, showAlert, user]);
 
   return (
     <div className="bg-gradient-to-r from-gray-900 to-black text-white p-4 flex justify-between items-center shadow-lg border-b border-pink-400/20">
@@ -1346,12 +1411,9 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = React.memo(() => {
             <div className="relative" ref={accountDropdownRef}>
               <button
                 onClick={() => setShowAccountDropdown(!showAccountDropdown)}
-                className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-gray-800/50 hover:bg-gray-700/50 border border-gray-700 hover:border-pink-500/50 transition-all"
+                className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-gray-800/50 hover:bg-gray-700/50 border border-gray-700 hover:border-pink-500/50 transition-all"
               >
-                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 flex items-center justify-center text-white font-bold">
-                  {user.email?.charAt(0).toUpperCase() || 'U'}
-                </div>
-                <span className="text-white text-sm hidden md:inline">{user.email?.split('@')[0]}</span>
+                <span className="text-white font-medium">{user.email?.split('@')[0]}</span>
                 <svg
                   className={`w-4 h-4 text-gray-400 transition-transform ${
                     showAccountDropdown ? 'rotate-180' : ''
