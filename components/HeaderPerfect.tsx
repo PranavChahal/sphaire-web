@@ -1037,7 +1037,7 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = React.memo(() => {
             updated_at: new Date().toISOString()
           })
           .eq('id', fileId)
-          .eq('user_id', user.id);
+          .eq('owner_id', user.id);
         
         if (updateError) {
           console.error('Update error:', updateError);
@@ -1062,7 +1062,7 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = React.memo(() => {
           .insert({
             name: fileName,
             content: json,
-            user_id: user.id,
+            owner_id: user.id,
             is_shared: false
           })
           .select()

@@ -33,28 +33,26 @@ const DesignFilePage = () => {
       fetchDesignFile()
     }
   }, [fileId, user])
-  
   const fetchDesignFile = async () => {
     try {
       setLoading(true)
       setError('')
       
-      const { data, error: fetchError } = await supabase
+      const { data: file, error: fileError } = await supabase
         .from('design_files')
         .select('*')
         .eq('id', fileId)
+        .eq('owner_id', user?.id)
         .single()
-      
-      if (fetchError) {
-        console.error('Error fetching design file:', fetchError)
+      if (fileError) {
+        console.error('Error fetching design file:', fileError)
         setError('Failed to load design file')
         return
       }
-      
-      if (data) {
-        setFile(data)
+      if (file) {
+        setFile(file)
         // Load the design content
-        await loadDesignContent(data)
+        await loadDesignContent(file)
       }
     } catch (err) {
       console.error('Unexpected error:', err)
