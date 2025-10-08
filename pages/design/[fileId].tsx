@@ -1,8 +1,9 @@
 import React from 'react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
-// Authentication removed - design files no longer require login
+import { useAuth } from '../../contexts/AuthContext'
+import ProtectedRoute from '../../components/ProtectedRoute'
 import HeaderPerfect from '../../components/HeaderPerfect'
 import { ViewportProduction } from '../../components/ViewportProduction'
 import Sidebar from '../../components/Sidebar'
@@ -10,12 +11,14 @@ import VoiceModule from '../../components/VoiceModule'
 import { useUIStore } from '../../store/uiStore'
 import useStore from '../../store/store'
 import { ModalProvider } from '../../contexts/ModalContext'
-import { DesignFile } from '../../lib/supabase'
+import { supabase, DesignFile } from '../../lib/supabase'
 
 const DesignFilePage = () => {
-  // State variables removed - authentication disabled
+  const [file, setFile] = useState<DesignFile | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   
-  // Authentication removed - design files work without login
+  const { user } = useAuth()
   const router = useRouter()
   const { fileId } = router.query
   
@@ -26,15 +29,40 @@ const DesignFilePage = () => {
   const { addShape, addModel, clearShapes } = useStore()
 
   useEffect(() => {
-    // File fetching disabled - authentication removed
-    if (fileId) {
-      // Design files now work without authentication
-      console.log('Design file ID:', fileId)
+    if (fileId && user) {
+      fetchDesignFile()
     }
-  }, [fileId])
+  }, [fileId, user])
   
-
-  // File fetching removed - authentication disabled
+  const fetchDesignFile = async () => {
+    try {
+      setLoading(true)
+      setError('')
+      
+      const { data, error: fetchError } = await supabase
+        .from('design_files')
+        .select('*')
+        .eq('id', fileId)
+        .single()
+      
+      if (fetchError) {
+        console.error('Error fetching design file:', fetchError)
+        setError('Failed to load design file')
+        return
+      }
+      
+      if (data) {
+        setFile(data)
+        // Load the design content
+        await loadDesignContent(data)
+      }
+    } catch (err) {
+      console.error('Unexpected error:', err)
+      setError('An unexpected error occurred')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   /**
    * Reconstruct imported model from saved store data
@@ -164,12 +192,39 @@ const DesignFilePage = () => {
     }
   }
 
-  // Navigation function removed
+  if (loading) {
+    return (
+      <ProtectedRoute>
+        <div className="h-screen w-screen flex items-center justify-center bg-gray-900">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto"></div>
+            <p className="mt-4 text-gray-300">Loading design file...</p>
+          </div>
+        </div>
+      </ProtectedRoute>
+    )
+  }
 
-  // Loading and error states removed - authentication disabled
+  if (error) {
+    return (
+      <ProtectedRoute>
+        <div className="h-screen w-screen flex items-center justify-center bg-gray-900">
+          <div className="text-center">
+            <div className="text-red-400 text-xl mb-4">{error}</div>
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="bg-pink-500 hover:bg-pink-600 text-white px-6 py-2 rounded-lg"
+            >
+              Back to Dashboard
+            </button>
+          </div>
+        </div>
+      </ProtectedRoute>
+    )
+  }
 
   return (
-
+    <ProtectedRoute>
       <ModalProvider>
         <div className="h-screen w-screen flex flex-col bg-gray-900 text-white overflow-hidden">
           <Head>
@@ -198,6 +253,7 @@ const DesignFilePage = () => {
           </div>
         </div>
       </ModalProvider>
+    </ProtectedRoute>
   )
 }
 
