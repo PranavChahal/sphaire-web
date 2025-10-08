@@ -1383,32 +1383,10 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = React.memo(() => {
           </svg>
         </button>
         
-        {/* Account Button with Dropdown */}
+        {/* Account Menu / Login Button */}
         <div className="relative" ref={accountDropdownRef}>
-          <button
-            onClick={() => setShowAccountDropdown(!showAccountDropdown)}
-            className="px-5 py-2.5 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg border bg-black text-pink-400 hover:text-pink-300 border-pink-400/20 hover:border-pink-400/40 hover:shadow-lg hover:shadow-pink-400/20 flex items-center space-x-2"
-            title="Account options"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-            <span>Account</span>
-            <svg 
-              className={`w-4 h-4 transition-transform duration-200 ${
-                showAccountDropdown ? 'rotate-180' : ''
-              }`} 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-          
-          {/* Account Menu / Login Button */}
           {user ? (
-            <div className="relative" ref={accountDropdownRef}>
+            <>
               <button
                 onClick={() => setShowAccountDropdown(!showAccountDropdown)}
                 className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-gray-800/50 hover:bg-gray-700/50 border border-gray-700 hover:border-pink-500/50 transition-all"
@@ -1453,7 +1431,7 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = React.memo(() => {
                   </button>
                 </div>
               )}
-            </div>
+            </>
           ) : (
             <Link href="/login">
               <button className="px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white rounded-lg font-medium transition-all shadow-lg shadow-pink-500/20">
