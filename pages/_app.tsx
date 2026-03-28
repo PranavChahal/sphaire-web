@@ -3,7 +3,6 @@ import '../styles/AIModelingPanel.css';
 import React, { useEffect } from 'react';
 import type { AppProps } from 'next/app';
 import { BabylonProvider } from '../contexts/BabylonContext';
-import { AuthProvider } from '../contexts/AuthContext';
 import UndoRedoBridge from '../components/UndoRedoBridge';
 import { initializeKeyPool } from '../services/apiKeyPool';
 import { Analytics } from '@vercel/analytics/react';
@@ -106,14 +105,12 @@ function MyApp({ Component, pageProps }: AppProps) {
   
   return (
     <ProductionErrorBoundary>
-      <AuthProvider>
-        <BabylonProvider>
-          {/* Global Undo/Redo system */}
-          <UndoRedoBridge />
-          <Component {...pageProps} />
-          <Analytics />
-        </BabylonProvider>
-      </AuthProvider>
+      <BabylonProvider>
+        {/* Global Undo/Redo system */}
+        <UndoRedoBridge />
+        <Component {...pageProps} />
+        <Analytics />
+      </BabylonProvider>
     </ProductionErrorBoundary>
   );
 }

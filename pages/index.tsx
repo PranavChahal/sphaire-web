@@ -8,7 +8,6 @@ import VoiceModule from '../components/VoiceModule';
 import AIContextPanel from '../components/AIContextPanel';
 import { useUIStore } from '../store/uiStore';
 import { ModalProvider } from '../contexts/ModalContext';
-import ProtectedRoute from '../components/ProtectedRoute';
 
 const Home: NextPage = () => {
   console.log('Rendering Home component');
@@ -16,8 +15,7 @@ const Home: NextPage = () => {
   
   console.log('Home component useEffect setup complete');
   return (
-    <ProtectedRoute>
-      <ModalProvider>
+    <ModalProvider>
         <div className="h-screen w-screen flex flex-col bg-gray-900 text-white overflow-hidden">
           <SEOHead 
             title="Sphaire3D - AI-Powered 3D Modeling & Design Platform | Create 3D Models with AI"
@@ -48,8 +46,7 @@ const Home: NextPage = () => {
           {/* AI Context Panel - Bottom Right */}
           <AIContextPanel />
         </div>
-      </ModalProvider>
-    </ProtectedRoute>
+    </ModalProvider>
   );
 };
 

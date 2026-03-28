@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { ThingiDoc, SearchResult, SearchOptions, SearchState, SearchHookReturn } from '../types/search';
 import type { SearchMessage, SearchResponse } from '../workers/search.worker';
 
-// Supabase Storage URL for the search index
+// Public CDN URL for the search index
 const SEARCH_INDEX_URL = 'https://mvqfkhyxrcymuvorjeru.supabase.co/storage/v1/object/public/meta/search_index.json';
 
 export const useThingiSearch = (options: SearchOptions = {}): SearchHookReturn => {
@@ -64,7 +64,7 @@ export const useThingiSearch = (options: SearchOptions = {}): SearchHookReturn =
     // Load search index
     const loadSearchIndex = async () => {
       try {
-        console.log('Loading search index from Supabase Storage...');
+        console.log('Loading search index...');
         const response = await fetch(SEARCH_INDEX_URL);
 
         if (!response.ok) {
@@ -72,7 +72,7 @@ export const useThingiSearch = (options: SearchOptions = {}): SearchHookReturn =
         }
 
         const index: ThingiDoc[] = await response.json();
-        // Search index loaded from Supabase
+        // Search index loaded
         
         // Send index to worker
         if (workerRef.current) {
@@ -84,10 +84,10 @@ export const useThingiSearch = (options: SearchOptions = {}): SearchHookReturn =
           } as SearchMessage);
         }
       } catch (error) {
-        console.error('Failed to load search index from Supabase:', error);
+        console.error('Failed to load search index:', error);
         setSearchState((prev: SearchState) => ({ 
           ...prev, 
-          error: 'Failed to load search index from Supabase Storage. Please check your connection.' 
+          error: 'Failed to load search index. Please check your connection.' 
         }));
       }
     };

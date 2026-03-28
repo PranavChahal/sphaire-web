@@ -1,17 +1,8 @@
-import { createClient } from '@supabase/supabase-js'
+// Supabase has been removed — this file is kept as a stub for type compatibility
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+export const supabase = null as any
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true
-  }
-})
-
-// Database types for TypeScript
+// Database types for TypeScript (kept for compatibility)
 export interface DesignFile {
   id: string
   owner_id: string

@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 
-// Supabase Storage base URL for Thingi10K models
-const SUPABASE_STORAGE_BASE_URL = 'https://mvqfkhyxrcymuvorjeru.supabase.co/storage/v1/object/public/thingi10k';
+// Public storage base URL for Thingi10K models
+const STORAGE_BASE_URL = 'https://mvqfkhyxrcymuvorjeru.supabase.co/storage/v1/object/public/thingi10k';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -23,17 +23,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       fileIdStr = fileIdStr.replace('raw_meshes/', '');
     }
     
-    console.log('API: Requesting Thingi10K file from Supabase:', fileIdStr);
+    console.log('API: Requesting Thingi10K file:', fileIdStr);
     
-    // Construct Supabase Storage URL
-    const supabaseUrl = `${SUPABASE_STORAGE_BASE_URL}/${fileIdStr}`;
+    // Construct storage URL
+    const storageUrl = `${STORAGE_BASE_URL}/${fileIdStr}`;
     
-    // Fetch from Supabase Storage
-    const response = await fetch(supabaseUrl);
+    // Fetch from storage
+    const response = await fetch(storageUrl);
     
     if (!response.ok) {
-      console.error('API: File not found in Supabase Storage:', supabaseUrl);
-      return res.status(404).json({ error: 'Model file not found in Supabase Storage' });
+      console.error('API: File not found in storage:', storageUrl);
+      return res.status(404).json({ error: 'Model file not found' });
     }
 
     // Get file extension to determine content type
@@ -68,10 +68,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const contentLength = response.headers.get('content-length');
     if (contentLength) {
       res.setHeader('Content-Length', contentLength);
-      console.log(`API: Serving file from Supabase: ${fileIdStr.split('/').pop()} (${(parseInt(contentLength) / 1024 / 1024).toFixed(2)} MB)`);
+      console.log(`API: Serving file: ${fileIdStr.split('/').pop()} (${(parseInt(contentLength) / 1024 / 1024).toFixed(2)} MB)`);
     }
 
-    // Stream the response from Supabase to client
+    // Stream the response to client
     if (response.body) {
       const reader = response.body.getReader();
       
@@ -83,19 +83,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
         res.end();
       } catch (streamError) {
-        console.error('API: Error streaming file from Supabase:', streamError);
+        console.error('API: Error streaming file:', streamError);
         if (!res.headersSent) {
-          res.status(500).json({ error: 'Error streaming file from Supabase Storage' });
+          res.status(500).json({ error: 'Error streaming file' });
         }
       }
     } else {
-      res.status(500).json({ error: 'No file data received from Supabase Storage' });
+      res.status(500).json({ error: 'No file data received' });
     }
 
   } catch (error) {
-    console.error('API: Supabase file serving error:', error);
+    console.error('API: File serving error:', error);
     if (!res.headersSent) {
-      res.status(500).json({ error: 'Failed to fetch model from Supabase Storage' });
+      res.status(500).json({ error: 'Failed to fetch model file' });
     }
   }
 }

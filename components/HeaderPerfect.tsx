@@ -9,11 +9,8 @@ import useStore from '../store/store';
 import useSceneStore from '../store/sceneStore';
 import { exportSTL, exportOBJ, exportGLTF, downloadBlob } from '../utils/exporters';
 
-import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { useThingiSearch } from '../hooks/useThingiSearch';
-import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
 
 
 interface HeaderPerfectProps {
@@ -43,7 +40,6 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = React.memo(() => {
   const timeoutRefs = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
-  const { user, signOut } = useAuth();
   
   useEffect(() => {
     return () => {
@@ -75,8 +71,6 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = React.memo(() => {
   const { scene } = useSceneStore();
   const { showAlert, showConfirm } = useModal();
 
-  // Router for navigation
-  const router = useRouter();
 
   // Helper function to validate import readiness
   const validateImportReady = useCallback(() => {
@@ -920,10 +914,6 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = React.memo(() => {
     );
   }, [selectedShapeId, shapes, scene, removeShape, showAlert, showConfirm]);
 
-  const handleSignOut = useCallback(async () => {
-    await signOut();
-    router.push('/login');
-  }, [signOut, router]);
 
   const copyShareLink = useCallback(() => {
     if (typeof window !== 'undefined') {
@@ -1013,81 +1003,24 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = React.memo(() => {
         }
       };
       
-      // Save to Supabase cloud
-      if (!user) {
-        showAlert(
-          'Not Signed In',
-          'Please sign in to save your design to the cloud.',
-          'error'
-        );
-        return;
-      }
-
+      // Save locally as JSON download
       const json = JSON.stringify(sceneData, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+      a.download = `sphaire_design_${timestamp}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
       
-      // Check if we're editing an existing file (from URL)
-      const fileId = router.query.fileId as string | undefined;
-      
-      if (fileId) {
-        // Update existing file
-        const { error: updateError } = await supabase
-          .from('design_files')
-          .update({
-            content: json,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', fileId)
-          .eq('owner_id', user.id);
-        
-        if (updateError) {
-          console.error('Update error:', updateError);
-          showAlert(
-            'Save Failed',
-            `Failed to save design: ${updateError.message}`,
-            'error'
-          );
-          return;
-        }
-        
-        showAlert(
-          'Design Saved',
-          'Your design has been saved to the cloud!',
-          'success'
-        );
-      } else {
-        // Create new file
-        const fileName = `Design ${new Date().toLocaleDateString()}`;
-        const { data, error: insertError } = await supabase
-          .from('design_files')
-          .insert({
-            name: fileName,
-            content: json,
-            owner_id: user.id,
-            is_shared: false
-          })
-          .select()
-          .single();
-        
-        if (insertError) {
-          console.error('Insert error:', insertError);
-          showAlert(
-            'Save Failed',
-            `Failed to save design: ${insertError.message}`,
-            'error'
-          );
-          return;
-        }
-        
-        if (data) {
-          // Navigate to the new file's page
-          router.push(`/design/${data.id}`);
-          showAlert(
-            'Design Saved',
-            'Your design has been saved to the cloud!',
-            'success'
-          );
-        }
-      }
+      showAlert(
+        'Design Saved',
+        'Your design has been downloaded as a JSON file.',
+        'success'
+      );
     } catch (error) {
       console.error('Failed to save design:', error);
       showAlert(
@@ -1096,7 +1029,7 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = React.memo(() => {
         'error'
       );
     }
-  }, [scene, shapes, router, showAlert, user]);
+  }, [scene, shapes, showAlert]);
 
   return (
     <div className="bg-gradient-to-r from-gray-900 to-black text-white p-4 flex justify-between items-center shadow-lg border-b border-pink-400/20">
@@ -1118,7 +1051,7 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = React.memo(() => {
             }}
           />
         </a>
-        <Link href="/dashboard">
+        <Link href="/">
           <h1 className="text-2xl font-bold bg-gradient-to-r from-pink-300 to-pink-500 bg-clip-text text-transparent cursor-pointer hover:opacity-80 transition-opacity">
             Sphaire
           </h1>
@@ -1383,61 +1316,6 @@ const HeaderPerfect: React.FC<HeaderPerfectProps> = React.memo(() => {
           </svg>
         </button>
         
-        {/* Account Menu / Login Button */}
-        {user ? (
-          <div className="relative" ref={accountDropdownRef}>
-            <button
-              onClick={() => setShowAccountDropdown(!showAccountDropdown)}
-              className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-gray-800/50 hover:bg-gray-700/50 border border-gray-700 hover:border-pink-500/50 transition-all"
-            >
-              <span className="text-white font-medium">{user.email?.split('@')[0]}</span>
-              <svg
-                className={`w-4 h-4 text-gray-400 transition-transform ${
-                  showAccountDropdown ? 'rotate-180' : ''
-                }`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-
-            {showAccountDropdown && (
-              <div className="absolute right-0 mt-2 w-56 bg-gray-800 rounded-lg shadow-xl border border-gray-700 py-2 z-50 animate-fadeIn">
-                <div className="px-4 py-3 border-b border-gray-700">
-                  <p className="text-sm text-gray-400">Signed in as</p>
-                  <p className="text-sm font-medium text-white truncate">{user.email}</p>
-                </div>
-                
-                <Link href="/dashboard">
-                  <div className="px-4 py-2 hover:bg-gray-700 cursor-pointer flex items-center space-x-2 text-gray-300 hover:text-white transition-colors">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                    </svg>
-                    <span>Dashboard</span>
-                  </div>
-                </Link>
-                
-                <button
-                  onClick={handleSignOut}
-                  className="w-full px-4 py-2 text-left hover:bg-gray-700 flex items-center space-x-2 text-red-400 hover:text-red-300 transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                  </svg>
-                  <span>Sign Out</span>
-                </button>
-              </div>
-            )}
-          </div>
-        ) : (
-          <Link href="/login">
-            <button className="px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white rounded-lg font-medium transition-all shadow-lg shadow-pink-500/20">
-              Sign In
-            </button>
-          </Link>
-        )}
       </div>
       
       {/* Share Modal */}
