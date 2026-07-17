@@ -90,8 +90,8 @@ export const SEOHead: React.FC<SEOHeadProps> = ({
       <link rel="manifest" href="/site.webmanifest" />
 
       {/* Theme Color */}
-      <meta name="theme-color" content="#ec4899" />
-      <meta name="msapplication-TileColor" content="#ec4899" />
+      <meta name="theme-color" content="#09090b" />
+      <meta name="msapplication-TileColor" content="#7c6bff" />
 
       {/* Schema.org for Google */}
       <script
@@ -107,11 +107,6 @@ export const SEOHead: React.FC<SEOHeadProps> = ({
               '@type': 'Offer',
               price: '0',
               priceCurrency: 'USD'
-            },
-            aggregateRating: {
-              '@type': 'AggregateRating',
-              ratingValue: '4.8',
-              ratingCount: '1250'
             },
             description: description,
             url: domain,
@@ -140,8 +135,8 @@ export const SEOHead: React.FC<SEOHeadProps> = ({
               'AI mesh generation',
               'Boolean operations',
               'STL/GLTF export',
-              'Cloud storage',
-              'Collaborative editing'
+              'Deterministic manufacturability checks',
+              'Visual design review'
             ]
           })
         }}

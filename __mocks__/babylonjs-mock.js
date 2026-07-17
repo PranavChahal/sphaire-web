@@ -95,13 +95,5 @@ const BABYLON = {
   }
 };
 
-// Export as ES module and CommonJS
-export default BABYLON;
-export const Vector3 = BABYLON.Vector3;
-export const Matrix = BABYLON.Matrix;
-export const Mesh = BABYLON.Mesh;
-export const VertexData = BABYLON.VertexData;
-export const VertexBuffer = BABYLON.VertexBuffer;
-export const PickingInfo = BABYLON.PickingInfo;
-
 module.exports = BABYLON;
+module.exports.default = BABYLON;

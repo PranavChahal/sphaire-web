@@ -2,19 +2,20 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import fs from 'fs';
 import path from 'path';
 
-// CRITICAL: Remove body size limit for heavy models
+// Cap upload size. (Note: on serverless/read-only hosts like Vercel, writes to
+// public/ don't persist across invocations — this endpoint is for local/dev use or a
+// long-lived server. Prefer object storage in production.)
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: '500mb', // Support up to 500MB models
+      sizeLimit: '50mb',
     },
   },
 };
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
+const ALLOWED_EXTENSIONS = new Set(['.glb', '.gltf', '.stl', '.obj', '.ply', '.step', '.stp']);
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' });
   }
@@ -22,36 +23,44 @@ export default async function handler(
   try {
     const { fileName, data } = req.body;
 
-    if (!fileName || !data) {
+    if (!fileName || typeof fileName !== 'string' || !data) {
       return res.status(400).json({ message: 'Missing fileName or data' });
     }
 
-    // Ensure public/models directory exists
+    // --- Harden against path traversal: strip any directory components, then
+    // allowlist the extension, then verify the resolved path stays inside modelsDir.
+    const safeName = path.basename(fileName).replace(/[^a-zA-Z0-9._-]/g, '_');
+    const ext = path.extname(safeName).toLowerCase();
+    if (!safeName || safeName.startsWith('.') || !ALLOWED_EXTENSIONS.has(ext)) {
+      return res.status(400).json({ message: 'Invalid or unsupported file name' });
+    }
+
     const modelsDir = path.join(process.cwd(), 'public', 'models');
+    const filePath = path.join(modelsDir, safeName);
+    const resolved = path.resolve(filePath);
+    if (resolved !== filePath || !resolved.startsWith(path.resolve(modelsDir) + path.sep)) {
+      return res.status(400).json({ message: 'Invalid file path' });
+    }
+
     if (!fs.existsSync(modelsDir)) {
       fs.mkdirSync(modelsDir, { recursive: true });
     }
 
-    // Convert array back to Buffer
     const buffer = Buffer.from(data);
-    
-    // Write file to public/models directory
-    const filePath = path.join(modelsDir, fileName);
-    fs.writeFileSync(filePath, buffer);
+    fs.writeFileSync(resolved, buffer);
 
-    console.log('Model saved to:', filePath);
+    console.log('Model saved to:', resolved);
 
-    res.status(200).json({ 
-      success: true, 
+    return res.status(200).json({
+      success: true,
       message: 'Model saved successfully',
-      url: `/models/${fileName}`
+      url: `/models/${safeName}`,
     });
-
   } catch (error) {
     console.error('Error saving model:', error);
-    res.status(500).json({ 
-      message: 'Failed to save model', 
-      error: (error as Error).message 
+    return res.status(500).json({
+      message: 'Failed to save model',
+      error: (error as Error).message,
     });
   }
 }

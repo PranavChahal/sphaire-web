@@ -220,8 +220,11 @@ const useStore = create<ShapeState>((set): ShapeState => ({
         description: `Create ${newShape.type}`,
         data: newShape,
         redo: async () => {
-          // Use direct method to avoid triggering subscription multiple times
-          useStore.getState()._addShapeDirect(newShape);
+          // executeAction calls redo once when it records the action. The shape is
+          // already visible by then, so only add it during a genuine redo.
+          if (!useStore.getState().shapes.some((shape) => shape.id === newShape.id)) {
+            useStore.getState()._addShapeDirect(newShape);
+          }
         },
         undo: async () => {
           // Use direct method to avoid triggering subscription multiple times
@@ -229,12 +232,12 @@ const useStore = create<ShapeState>((set): ShapeState => ({
         }
       };
       
-      // Execute through undo/redo system
-      undoRedoSystem.executeAction(action);
-      return state; // Don't modify state directly
+      // Commit the object first. Calling executeAction from inside this Zustand
+      // setter used to run a nested setter and then overwrite it with `state`,
+      // leaving a visible Babylon mesh with no object in the application store.
+      queueMicrotask(() => void undoRedoSystem.executeAction(action));
     }
-    
-    // Default behavior when undo/redo is disabled
+
     return { 
       shapes: [...state.shapes, newShape],
       selectedShapeId: id,
@@ -256,19 +259,18 @@ const useStore = create<ShapeState>((set): ShapeState => ({
           description: `Create model ${newModel.fileName}`,
           data: newModel,
           redo: async () => {
-            // Use direct method to avoid multiple subscriptions
-            useStore.getState()._addShapeDirect(newModel);
+            if (!useStore.getState().shapes.some((shape) => shape.id === newModel.id)) {
+              useStore.getState()._addShapeDirect(newModel);
+            }
           },
           undo: async () => {
             // Use direct method to avoid multiple subscriptions
             useStore.getState()._removeShapeDirect(newModel.id);
           }
         };
-        undoRedoSystem.executeAction(action);
-        return state; // no direct mutate when using undo/redo
+        queueMicrotask(() => void undoRedoSystem.executeAction(action));
       }
 
-      // Default direct behavior if undo/redo disabled
       return {
         shapes: [...state.shapes, newModel],
         selectedShapeId: id,
@@ -314,8 +316,9 @@ const useStore = create<ShapeState>((set): ShapeState => ({
           }
         };
         
-        // Execute action for undo/redo history (async)
-        undoRedoSystem.executeAction(action);
+        // Record after the state transaction commits. This prevents nested Zustand
+        // writes from racing the viewport subscription.
+        queueMicrotask(() => void undoRedoSystem.executeAction(action));
         
         return newState;
       }
@@ -364,8 +367,11 @@ const useStore = create<ShapeState>((set): ShapeState => ({
             } as Partial<ParametricShape>);
           }
         };
-        undoRedoSystem.executeAction(action);
-        return state;
+        queueMicrotask(() => void undoRedoSystem.executeAction(action));
+        return {
+          ...state,
+          shapes: state.shapes.map((item) => item.id === id ? updatedShape : item)
+        };
       }
 
       return {
@@ -398,9 +404,11 @@ const useStore = create<ShapeState>((set): ShapeState => ({
         }
       };
       
-      // Execute through undo/redo system
-      undoRedoSystem.executeAction(action);
-      return state; // Don't modify state directly
+      queueMicrotask(() => void undoRedoSystem.executeAction(action));
+      return {
+        shapes: state.shapes.filter((shape) => shape.id !== id),
+        selectedShapeId: state.selectedShapeId === id ? null : state.selectedShapeId
+      };
     }
     
     // Default behavior when undo/redo is disabled
@@ -435,8 +443,8 @@ const useStore = create<ShapeState>((set): ShapeState => ({
         }
       };
       
-      // Execute through undo/redo system
-      undoRedoSystem.executeAction(action);
+      // Make the edit visible now, then record it once this setter has committed.
+      queueMicrotask(() => void undoRedoSystem.executeAction(action));
       
       // CRITICAL FIX: Also update state immediately so viewport gets new data
       // The undo/redo action is already registered, this just makes the change visible immediately
@@ -514,11 +522,14 @@ const useStore = create<ShapeState>((set): ShapeState => ({
   setUndoRedoSystem: (undoRedoState) => set({ _undoRedoSystem: undoRedoState }),
   
   // CRITICAL FIX: Direct state update methods (bypass undo/redo to prevent multiple subscriptions)
-  _addShapeDirect: (shape: Shape) => set((state) => ({
-    shapes: [...state.shapes, shape],
-    selectedShapeId: shape.id,
-    lastCreatedId: state.lastCreatedId + 1
-  })),
+  _addShapeDirect: (shape: Shape) => set((state) => {
+    if (state.shapes.some((item) => item.id === shape.id)) return state;
+    return {
+      shapes: [...state.shapes, shape],
+      selectedShapeId: shape.id,
+      lastCreatedId: state.lastCreatedId + 1
+    };
+  }),
   
   _removeShapeDirect: (id: string) => set((state) => ({
     shapes: state.shapes.filter(s => s.id !== id),

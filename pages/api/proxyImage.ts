@@ -17,14 +17,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: 'URL parameter is required' });
   }
 
-  try {
-    // Validate that it's an OpenAI image URL for security
-    if (!url.includes('oaidalleapiprodscus.blob.core.windows.net')) {
-      return res.status(400).json({ error: 'Only OpenAI DALL-E image URLs are allowed' });
-    }
+  // Strict allowlist by parsed host (not substring) to prevent SSRF.
+  const ALLOWED_HOSTS = new Set([
+    'oaidalleapiprodscus.blob.core.windows.net',
+    'oaiusercontent.com',
+  ]);
 
-    // Fetch the image from OpenAI
-    const imageResponse = await fetch(url);
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return res.status(400).json({ error: 'Invalid URL' });
+  }
+
+  const hostAllowed =
+    ALLOWED_HOSTS.has(parsed.hostname) ||
+    [...ALLOWED_HOSTS].some((h) => parsed.hostname === h || parsed.hostname.endsWith('.' + h));
+
+  if (parsed.protocol !== 'https:' || !hostAllowed) {
+    return res.status(400).json({ error: 'Only OpenAI image URLs over HTTPS are allowed' });
+  }
+
+  try {
+    // Fetch the image from the allowlisted host.
+    const imageResponse = await fetch(parsed.toString());
     
     if (!imageResponse.ok) {
       return res.status(imageResponse.status).json({ 

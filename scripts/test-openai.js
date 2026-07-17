@@ -32,7 +32,7 @@ if (!apiKey) {
   console.error('\nTo fix:');
   console.error('1. Make sure .env.local exists in project root');
   console.error('2. Add this line to .env.local:');
-  console.error('   OPENAI_API_KEY=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');
+  console.error('   OPENAI_API_KEY=sk-your-key-here');
   console.error('3. Restart your dev server completely (Ctrl+C then npm run dev)');
   process.exit(1);
 }

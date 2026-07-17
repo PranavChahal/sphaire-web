@@ -1,8 +1,13 @@
 /**
  * API Key Pool Service
- * 
- * Manages multiple OpenAI API keys to bypass rate limits
- * Automatically rotates between keys when one hits limit
+ *
+ * Manages multiple OpenAI API keys to bypass rate limits, rotating between them.
+ *
+ * CAVEAT: state (rate-limit flags, round-robin index) lives in a module-level singleton
+ * in memory. On serverless/edge hosts (e.g. Vercel) each invocation may run in a fresh
+ * instance, so this state is effectively per-request and rotation degrades to "pick the
+ * first available key". For true cross-request rotation, run on a long-lived server or
+ * back this with a shared store (Redis/Upstash).
  */
 
 interface APIKeyInfo {

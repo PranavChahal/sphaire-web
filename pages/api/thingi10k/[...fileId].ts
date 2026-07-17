@@ -1,7 +1,9 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 
-// Public storage base URL for Thingi10K models
-const STORAGE_BASE_URL = 'https://mvqfkhyxrcymuvorjeru.supabase.co/storage/v1/object/public/thingi10k';
+// Public storage base URL for Thingi10K models (override via env for self-hosting).
+const STORAGE_BASE_URL =
+  process.env.THINGI_STORAGE_BASE_URL ||
+  'https://mvqfkhyxrcymuvorjeru.supabase.co/storage/v1/object/public/thingi10k';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {

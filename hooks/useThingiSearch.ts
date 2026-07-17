@@ -2,8 +2,10 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { ThingiDoc, SearchResult, SearchOptions, SearchState, SearchHookReturn } from '../types/search';
 import type { SearchMessage, SearchResponse } from '../workers/search.worker';
 
-// Public CDN URL for the search index
-const SEARCH_INDEX_URL = 'https://mvqfkhyxrcymuvorjeru.supabase.co/storage/v1/object/public/meta/search_index.json';
+// Public CDN URL for the search index (override via env for self-hosting).
+const SEARCH_INDEX_URL =
+  process.env.NEXT_PUBLIC_THINGI_INDEX_URL ||
+  'https://mvqfkhyxrcymuvorjeru.supabase.co/storage/v1/object/public/meta/search_index.json';
 
 export const useThingiSearch = (options: SearchOptions = {}): SearchHookReturn => {
   const [searchState, setSearchState] = useState<SearchState>({

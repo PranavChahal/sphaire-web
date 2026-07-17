@@ -1,5 +1,6 @@
 import '../styles/globals.css';
 import '../styles/AIModelingPanel.css';
+import '../styles/studio.css';
 import React, { useEffect } from 'react';
 import type { AppProps } from 'next/app';
 import { BabylonProvider } from '../contexts/BabylonContext';

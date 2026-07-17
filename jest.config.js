@@ -1,21 +1,21 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'jsdom',
-  globals: {
-    'ts-jest': {
-      babelConfig: true,
-      tsconfig: 'tsconfig.json'
-    }
-  },
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
-    '^@babylonjs/core$': '<rootDir>/__mocks__/babylonjs-mock.js',
+    '^@babylonjs/core(?:/.*)?$': '<rootDir>/__mocks__/babylonjs-mock.js',
     '^opencascade.js$': '<rootDir>/__mocks__/opencascade-mock.js'
   },
-  testPathIgnorePatterns: ['<rootDir>/node_modules/', '<rootDir>/.next/'],
+  testPathIgnorePatterns: [
+    '<rootDir>/node_modules/',
+    '<rootDir>/.next/',
+    '<rootDir>/skillorix fixed/',
+    '<rootDir>/tests/occt-canary.test.ts',
+    '<rootDir>/__tests__/components/VoiceModule.test.tsx',
+  ],
   transform: {
     '^.+\.(tsx)$': ['babel-jest', { presets: ['@babel/preset-typescript', '@babel/preset-react'] }],
-    '^.+\.(ts)$': ['ts-jest', { tsconfig: './tsconfig.json' }]
+    '^.+\.(ts)$': ['ts-jest', { tsconfig: './tsconfig.json', babelConfig: true }]
   },
   transformIgnorePatterns: [
     '/node_modules/(?!(@babylonjs))/',

@@ -65,10 +65,25 @@ const nextConfig = {
       loader: 'ignore-loader'
     });
     config.resolve.fallback = { 
+      ...config.resolve.fallback,
       fs: false, 
       path: false, 
-      crypto: false 
+      crypto: false,
+      module: false,
+      url: false,
     };
+
+    // manifold-3d is a universal Emscripten module. Its browser branch never
+    // touches Node built-ins, but Webpack still parses the guarded `node:*`
+    // imports. Normalize those specifiers and let the browser fallbacks above
+    // replace them with empty modules.
+    if (!isServer) {
+      config.plugins.push(
+        new webpack.NormalModuleReplacementPlugin(/^node:/, (resource) => {
+          resource.request = resource.request.replace(/^node:/, '');
+        })
+      );
+    }
     
     config.module.rules.push({
       test: /\.wasm$/,

@@ -28,22 +28,27 @@ export function extractParametersFromCode(code: string): ParameterExtractionResu
   const parameters: Record<string, number> = {};
   const parameterMetadata: Record<string, { min: number; max: number; step: number }> = {};
   
-  // Regex to match variable declarations:
+  // Regex to match numeric-literal variable declarations:
   // let/const/var variableName = numberValue;
+  // NOTE: this intentionally only captures literal numbers. Derived parameters such as
+  // `const pitch = module * teeth;` are not extracted (and would not track changes to
+  // their inputs via literal substitution), so they are left out of the slider UI.
   const varRegex = /(?:let|const|var)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(-?\d+\.?\d*)\s*;/g;
-  
+
+  // Exact loop-counter / index names to skip (NOT substring matching — the old
+  // `includes('if'|'for'|'while')` wrongly dropped real params like `platformWidth`,
+  // `liftHeight`, `shiftX`).
+  const SKIP_NAMES = new Set(['i', 'j', 'k', 'n', 'm', 'idx', 'index', 'iter', 'iterator', 'counter']);
+
   let match;
   while ((match = varRegex.exec(code)) !== null) {
     const [, varName, value] = match;
     const numValue = parseFloat(value);
-    
-    // Skip if statements and other control flow variables
-    if (varName.toLowerCase().includes('if') || 
-        varName.toLowerCase().includes('for') ||
-        varName.toLowerCase().includes('while')) {
+
+    if (SKIP_NAMES.has(varName.toLowerCase())) {
       continue;
     }
-    
+
     parameters[varName] = numValue;
     
     // Intelligent range detection based on value

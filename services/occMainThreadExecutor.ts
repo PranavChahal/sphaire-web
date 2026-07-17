@@ -5,6 +5,7 @@
  */
 
 import { createOccWrapper, convertOCShapeToBabylonMesh } from '@/utils/occ-wrapper';
+import { staticScan } from './sandbox/staticScan';
 
 export class OCCMainThreadExecutor {
   private ocInstance: any = null;
@@ -112,6 +113,13 @@ export class OCCMainThreadExecutor {
     try {
       console.log('[OCC-MAIN] Executing code...');
       console.log('[OCC-MAIN] Code:', code.substring(0, 200) + '...');
+
+      // Static safety screen before any execution — every caller is protected here,
+      // regardless of whether they went through safeExecutor.
+      const scan = staticScan(code);
+      if (!scan.safe) {
+        throw new Error(`Blocked unsafe code: ${scan.reason}`);
+      }
 
       // Clean code: Remove markdown code fences if present
       let cleanedCode = code.trim();

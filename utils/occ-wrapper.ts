@@ -8,93 +8,127 @@ export function createOccWrapper(oc: any) {
     throw new Error('OpenCascade instance is required');
   }
 
+  // Free WASM temporaries. Safe to call on value-copied inputs (gp_Pnt/gp_Vec/gp_Dir/
+  // gp_Trsf/gp_Ax*/Message_ProgressRange) that builders copy on construction. We do NOT
+  // free builder objects here, because opencascade.js `.Shape()` may return a reference
+  // into the builder — freeing the builder could invalidate the returned shape.
+  const free = (...objs: any[]) => {
+    for (const o of objs) {
+      try {
+        if (o && typeof o.delete === 'function') o.delete();
+      } catch {
+        /* already freed / non-deletable */
+      }
+    }
+  };
+
   return {
     // Primitive creation
     createBox: function(width: number, height: number, depth: number) {
       const origin = new oc.gp_Pnt_3(0, 0, 0);
       const box = new oc.BRepPrimAPI_MakeBox_3(origin, width, height, depth);
-      return box.Shape();
+      const shape = box.Shape();
+      free(origin);
+      return shape;
     },
-    
+
     createCylinder: function(radius: number, height: number) {
       const cylinder = new oc.BRepPrimAPI_MakeCylinder_1(radius, height);
       return cylinder.Shape();
     },
-    
+
     createSphere: function(radius: number) {
       const sphere = new oc.BRepPrimAPI_MakeSphere_1(radius);
       return sphere.Shape();
     },
-    
+
     createCone: function(radius1: number, radius2: number, height: number) {
       const cone = new oc.BRepPrimAPI_MakeCone_1(radius1, radius2, height);
       return cone.Shape();
     },
-    
+
     createTorus: function(majorRadius: number, minorRadius: number) {
       const torus = new oc.BRepPrimAPI_MakeTorus_1(majorRadius, minorRadius);
       return torus.Shape();
     },
-    
+
     // Transformations
     translate: function(shape: any, x: number, y: number, z: number) {
       const translation = new oc.gp_Trsf_1();
-      translation.SetTranslation_1(new oc.gp_Vec_4(x, y, z));
+      const vec = new oc.gp_Vec_4(x, y, z);
+      translation.SetTranslation_1(vec);
       const transform = new oc.BRepBuilderAPI_Transform_2(shape, translation, false);
-      return transform.Shape();
+      const result = transform.Shape();
+      free(vec, translation);
+      return result;
     },
-    
+
     rotate: function(shape: any, axis: {x?: number, y?: number, z?: number}, angle: number) {
       const rotation = new oc.gp_Trsf_1();
-      const axisObj = new oc.gp_Ax1_2(
-        new oc.gp_Pnt_3(0, 0, 0), 
-        new oc.gp_Dir_4(axis.x || 0, axis.y || 0, axis.z || 1)
-      );
+      const origin = new oc.gp_Pnt_3(0, 0, 0);
+      const dir = new oc.gp_Dir_4(axis.x || 0, axis.y || 0, axis.z || 1);
+      const axisObj = new oc.gp_Ax1_2(origin, dir);
       rotation.SetRotation_1(axisObj, angle * Math.PI / 180);
       const transform = new oc.BRepBuilderAPI_Transform_2(shape, rotation, false);
-      return transform.Shape();
+      const result = transform.Shape();
+      free(origin, dir, axisObj, rotation);
+      return result;
     },
-    
+
     scale: function(shape: any, factor: number) {
       const scaling = new oc.gp_Trsf();
-      scaling.SetScale(new oc.gp_Pnt_3(0, 0, 0), factor);
+      const origin = new oc.gp_Pnt_3(0, 0, 0);
+      scaling.SetScale(origin, factor);
       const transform = new oc.BRepBuilderAPI_Transform_2(shape, scaling, false);
-      return transform.Shape();
+      const result = transform.Shape();
+      free(origin, scaling);
+      return result;
     },
-    
+
     // Boolean operations
     union: function(shape1: any, shape2: any) {
       if (Array.isArray(shape2)) {
         let result = shape1;
         for (let shape of shape2) {
-          const fuse = new oc.BRepAlgoAPI_Fuse_3(result, shape, new oc.Message_ProgressRange_1());
+          const progress = new oc.Message_ProgressRange_1();
+          const fuse = new oc.BRepAlgoAPI_Fuse_3(result, shape, progress);
           result = fuse.Shape();
+          free(progress);
         }
         return result;
       } else {
-        const fuse = new oc.BRepAlgoAPI_Fuse_3(shape1, shape2, new oc.Message_ProgressRange_1());
-        return fuse.Shape();
+        const progress = new oc.Message_ProgressRange_1();
+        const fuse = new oc.BRepAlgoAPI_Fuse_3(shape1, shape2, progress);
+        const result = fuse.Shape();
+        free(progress);
+        return result;
       }
     },
-    
+
     // Alias for union (commonly used name)
     fuse: function(shape1: any, shape2: any) {
       return this.union(shape1, shape2);
     },
-    
+
     difference: function(shape1: any, shape2: any) {
-      const cut = new oc.BRepAlgoAPI_Cut_3(shape1, shape2, new oc.Message_ProgressRange_1());
-      return cut.Shape();
+      const progress = new oc.Message_ProgressRange_1();
+      const cut = new oc.BRepAlgoAPI_Cut_3(shape1, shape2, progress);
+      const result = cut.Shape();
+      free(progress);
+      return result;
     },
-    
+
     // Alias for difference (commonly used name)
     cut: function(shape1: any, shape2: any) {
       return this.difference(shape1, shape2);
     },
-    
+
     intersection: function(shape1: any, shape2: any) {
-      const common = new oc.BRepAlgoAPI_Common_3(shape1, shape2, new oc.Message_ProgressRange_1());
-      return common.Shape();
+      const progress = new oc.Message_ProgressRange_1();
+      const common = new oc.BRepAlgoAPI_Common_3(shape1, shape2, progress);
+      const result = common.Shape();
+      free(progress);
+      return result;
     },
     
     // Edge operations - Chamfer and Fillet
@@ -1613,64 +1647,75 @@ export function convertOCShapeToBabylonMesh(oc: any, shape: any, name: string = 
     return null;
   }
 
+  // Track every WASM allocation so we can free it in `finally`. OpenCascade.js is
+  // Emscripten — objects created with `new oc.X()` (and many method return values)
+  // live on the WASM heap and leak unless `.delete()` is called. This function only
+  // returns plain JS arrays, so ALL of its allocations are temporary and safe to free.
+  const trash: any[] = [];
+  const track = <T>(o: T): T => {
+    if (o && typeof (o as any).delete === 'function') trash.push(o);
+    return o;
+  };
+
   try {
     console.log(`[OCC-WRAPPER] Converting ${name} to mesh...`);
-    
-    // Mesh the shape
-    const mesh = new oc.BRepMesh_IncrementalMesh_2(
-      shape, 0.1, false, 0.5, false
-    );
-    mesh.Perform(new oc.Message_ProgressRange_1());
+
+    // Mesh the shape (deflection scaled later; kept as original defaults here).
+    const mesh = track(new oc.BRepMesh_IncrementalMesh_2(shape, 0.1, false, 0.5, false));
+    const progress = track(new oc.Message_ProgressRange_1());
+    mesh.Perform(progress);
 
     if (!mesh.IsDone()) {
       throw new Error('Meshing failed');
     }
 
-    // Extract triangulation
     const vertices: number[] = [];
     const indices: number[] = [];
 
-    const faceExplorer = new oc.TopExp_Explorer_2(
-      shape,
-      oc.TopAbs_ShapeEnum.TopAbs_FACE,
-      oc.TopAbs_ShapeEnum.TopAbs_SHAPE
+    const faceExplorer = track(
+      new oc.TopExp_Explorer_2(
+        shape,
+        oc.TopAbs_ShapeEnum.TopAbs_FACE,
+        oc.TopAbs_ShapeEnum.TopAbs_SHAPE
+      )
     );
 
     let vertexOffset = 0;
 
     while (faceExplorer.More()) {
-      const face = oc.TopoDS.Face_1(faceExplorer.Current());
-      const location = new oc.TopLoc_Location_1();
-      
-      const triangulation = oc.Poly_MeshPurpose_NONE !== undefined 
-        ? oc.BRep_Tool.Triangulation(face, location, oc.Poly_MeshPurpose_NONE)
-        : oc.BRep_Tool.Triangulation(face, location, 0);
+      const face = track(oc.TopoDS.Face_1(faceExplorer.Current()));
+      const location = track(new oc.TopLoc_Location_1());
+
+      const triangulation = track(
+        oc.Poly_MeshPurpose_NONE !== undefined
+          ? oc.BRep_Tool.Triangulation(face, location, oc.Poly_MeshPurpose_NONE)
+          : oc.BRep_Tool.Triangulation(face, location, 0)
+      );
 
       if (!triangulation.IsNull()) {
+        // NOTE: `transform` is a reference into `location`, and `tri` is the pointer
+        // owned by the `triangulation` handle — neither is independently owned, so we
+        // must NOT delete them directly (the handle/location own them).
         const transform = location.Transformation();
         const tri = triangulation.get();
         const nodeCount = tri.NbNodes();
         const triangleCount = tri.NbTriangles();
+        const reversed = face.Orientation_1() === oc.TopAbs_Orientation.TopAbs_REVERSED;
 
-        // Extract vertices
+        // Extract vertices (each Node()/Transformed() allocates a gp_Pnt).
         for (let i = 1; i <= nodeCount; i++) {
-          const node = tri.Node(i);
-          const transformedNode = node.Transformed(transform);
-          vertices.push(
-            transformedNode.X(),
-            transformedNode.Y(),
-            transformedNode.Z()
-          );
+          const node = track(tri.Node(i));
+          const transformedNode = track(node.Transformed(transform));
+          vertices.push(transformedNode.X(), transformedNode.Y(), transformedNode.Z());
         }
 
-        // Extract triangles
+        // Extract triangles (each Triangle() allocates a Poly_Triangle).
         for (let i = 1; i <= triangleCount; i++) {
-          const triangle = tri.Triangle(i);
+          const triangle = track(tri.Triangle(i));
           const n1 = triangle.Value(1) - 1 + vertexOffset;
           const n2 = triangle.Value(2) - 1 + vertexOffset;
           const n3 = triangle.Value(3) - 1 + vertexOffset;
-
-          if (face.Orientation_1() === oc.TopAbs_Orientation.TopAbs_REVERSED) {
+          if (reversed) {
             indices.push(n1, n3, n2);
           } else {
             indices.push(n1, n2, n3);
@@ -1683,20 +1728,24 @@ export function convertOCShapeToBabylonMesh(oc: any, shape: any, name: string = 
       faceExplorer.Next();
     }
 
-    console.log(`[OCC-WRAPPER] Extracted ${vertices.length/3} vertices, ${indices.length/3} triangles`);
+    console.log(`[OCC-WRAPPER] Extracted ${vertices.length / 3} vertices, ${indices.length / 3} triangles`);
 
     if (vertices.length === 0 || indices.length === 0) {
       throw new Error('No mesh data extracted');
     }
 
-    return {
-      positions: vertices,
-      indices: indices,
-      name: name
-    };
-
+    return { positions: vertices, indices, name };
   } catch (error: any) {
     console.error('[OCC-WRAPPER] Error converting shape:', error);
     return null;
+  } finally {
+    // Free everything we allocated, newest first. Guard each delete.
+    for (let i = trash.length - 1; i >= 0; i--) {
+      try {
+        trash[i].delete();
+      } catch {
+        /* already freed / non-deletable */
+      }
+    }
   }
 }

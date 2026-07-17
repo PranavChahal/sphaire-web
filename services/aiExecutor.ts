@@ -130,69 +130,49 @@ async function executeBabylonCode(code: string, context: ExecutionContext): Prom
 /**
  * Execute OpenCascade.js code in a sandboxed environment
  */
-async function executeOpenCascadeCode(code: string, context: ExecutionContext): Promise<ExecutionResult> {
+async function executeOpenCascadeCode(code: string, _context: ExecutionContext): Promise<ExecutionResult> {
   try {
-    const { store } = context;
-    
-    // Dynamically import OpenCascade - this should be your existing OCC hook/service
-    const occModule = await import('../hooks/useOCC');
-    const useOCC = occModule.default;
-    const occ = useOCC();
-    
-    if (!occ.ready) {
-      throw new Error('OpenCascade.js is not ready or available');
-    }
-    
-    // Create a safe execution context with limited access
-    const sandbox = {
-      occ,
-      BRepPrimAPI_MakeBox: (occ as any).BRepPrimAPI_MakeBox,
-      BRepPrimAPI_MakeCylinder: (occ as any).BRepPrimAPI_MakeCylinder,
-      BRepPrimAPI_MakeSphere: (occ as any).BRepPrimAPI_MakeSphere,
-      gp_Pnt: (occ as any).gp_Pnt,
-      gp_Dir: (occ as any).gp_Dir,
-      gp_Vec: (occ as any).gp_Vec,
-      console: {
-        log: console.log,
-        error: console.error,
-        warn: console.warn
-      },
-      // Functions to interact with the store
-      addShape: (shapeData: Partial<Shape>) => store.addShape(shapeData),
-      getShapes: () => store.shapes,
-      getSelectedShape: () => {
-        const selectedId = store.selectedShapeId;
-        return selectedId ? store.shapes.find((s: any) => s.id === selectedId) : null;
-      },
-      // Result object
-      result: {
-        shapeId: '',
-        success: false,
-        message: ''
+    // Use the real singleton executor (runs on the WASM kernel with the static safety
+    // screen). The previous implementation called the `useOCC` React hook outside a
+    // component, which always threw — this path was effectively dead.
+    const { occMainThreadExecutor } = await import('./occMainThreadExecutor');
+    const { extractParametersFromCode } = await import('../utils/parameterExtractor');
+
+    const meshData = await occMainThreadExecutor.executeCode(code);
+    const meshArray = Array.isArray(meshData) ? meshData : [meshData];
+    const { parameters, parameterMetadata } = extractParametersFromCode(code);
+
+    const store = useStore.getState() as any;
+    let firstId = '';
+
+    meshArray.forEach((data: any, i: number) => {
+      if (data && data.positions && data.indices) {
+        const id = store.addParametricShape({
+          type: 'parametric',
+          shapeType: 'custom',
+          parameters,
+          constructionCode: code,
+          version: 1,
+          position: { x: 0, y: 0, z: 0 },
+          rotation: { x: 0, y: 0, z: 0 },
+          scaling: { x: 1, y: 1, z: 1 },
+          occShape: null,
+          name: data.name || `ai_occ_${i}_${Date.now()}`,
+          meshData: {
+            positions: new Float32Array(data.positions),
+            indices: new Uint32Array(data.indices),
+          },
+          metadata: parameterMetadata,
+        });
+        if (!firstId) firstId = id;
       }
-    };
-    
-    // Create a function from the code string
-    const executeFunction = new Function(
-      ...Object.keys(sandbox),
-      `
-        "use strict";
-        try {
-          ${code}
-          return result;
-        } catch (error) {
-          console.error("Error executing OpenCascade code:", error);
-          result.success = false;
-          result.message = error.message || "Unknown error";
-          return result;
-        }
-      `
-    );
-    
-    // Execute the function with the sandbox context
-    const result = executeFunction(...Object.values(sandbox));
-    
-    return result as ExecutionResult;
+    });
+
+    if (!firstId) {
+      throw new Error('OpenCascade code produced no valid shapes');
+    }
+
+    return { shapeId: firstId, success: true };
   } catch (error) {
     return {
       shapeId: '',
@@ -203,50 +183,10 @@ async function executeOpenCascadeCode(code: string, context: ExecutionContext): 
 }
 
 /**
- * Execute a boolean operation or other complex CAD operation on mesh elements
- * 
- * @param operation - Operation type (union, subtract, intersect, etc.)
- * @param meshId - Target mesh ID
- * @param elementIds - Array of element indices to operate on
- * @param params - Additional operation parameters
- */
-export const executeOperation = async (
-  operation: string,
-  meshId: string,
-  elementIds: number[],
-  _params: Record<string, any> = {}
-): Promise<string> => {
-  try {
-    // Get the store state
-    const store = useStore.getState();
-    
-    // Find the target mesh
-    const targetShape = (store as any).shapes.find((s: any) => s.id === meshId);
-    if (!targetShape) {
-      throw new Error(`Mesh with ID ${meshId} not found`);
-    }
-    
-    // This would connect to your subObjectEditor implementation
-    // For now, we'll just return a mock result
-    console.log(`Executing ${operation} on ${meshId} elements: ${elementIds}`);
-    
-    // In a real implementation, this would call the appropriate subObjectEditor methods
-    
-    return meshId; // Return the ID of the modified shape
-  } catch (error) {
-    if (error instanceof Error) {
-      throw new Error(`Operation execution failed: ${error.message}`);
-    }
-    throw new Error('Operation execution failed with an unknown error');
-  }
-};
-
-/**
  * Exported default object for named imports
  */
 const aiExecutor = {
   executeModelCode,
-  executeOperation
 };
 
 export default aiExecutor;

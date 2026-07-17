@@ -131,6 +131,9 @@ assets-cache/
 opencascade-build/
 occt-build/
 
+# Copied by scripts/copy-wasm-assets.js during dev/build
+public/replicad/
+
 # ===================================
 # SUPABASE
 # ===================================

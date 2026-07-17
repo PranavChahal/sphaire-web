@@ -118,7 +118,7 @@ export function selectElements(
         return selectEdges(mesh, pickPosition, radius);
       
       case 'face':
-        return selectFaces(pickInfo);
+        return selectFaces(mesh, pickInfo);
       
       default:
         console.warn(`Unknown selection mode: ${mode}`);
@@ -219,14 +219,94 @@ function selectEdges(mesh: Mesh, pickPosition: Vector3, radius: number): number[
  * @param pickInfo - Pick information containing face ID
  * @returns Array of face indices
  */
-function selectFaces(pickInfo: PickingInfo): number[] {
+function selectFaces(mesh: Mesh, pickInfo: PickingInfo): number[] {
   if (pickInfo.faceId === undefined || pickInfo.faceId === null) {
     console.warn('No face ID in pick info');
     return [];
   }
-  
-  console.log(`Selected face: ${pickInfo.faceId}`);
-  return [pickInfo.faceId];
+
+  const positions = mesh.getVerticesData('position');
+  const indices = mesh.getIndices();
+  if (!positions || !indices) return [pickInfo.faceId];
+
+  const clickedOffset = pickInfo.faceId * 3;
+  if (clickedOffset + 2 >= indices.length) return [pickInfo.faceId];
+
+  const point = (vertexIndex: number) => {
+    const offset = vertexIndex * 3;
+    return new Vector3(positions[offset], positions[offset + 1], positions[offset + 2]);
+  };
+  const a = point(indices[clickedOffset]);
+  const b = point(indices[clickedOffset + 1]);
+  const c = point(indices[clickedOffset + 2]);
+  const normal = Vector3.Cross(b.subtract(a), c.subtract(a)).normalize();
+  const tolerance = Math.max(1e-4, mesh.getBoundingInfo().boundingBox.extendSize.length() * 1e-3);
+  const coplanar: number[] = [];
+
+  // Babylon primitives split each flat side into two triangles. Treat those
+  // triangles as one face so clicking a box side selects the whole side.
+  for (let faceId = 0; faceId < indices.length / 3; faceId += 1) {
+    const offset = faceId * 3;
+    const p0 = point(indices[offset]);
+    const p1 = point(indices[offset + 1]);
+    const p2 = point(indices[offset + 2]);
+    const candidateNormal = Vector3.Cross(p1.subtract(p0), p2.subtract(p0)).normalize();
+    const aligned = Math.abs(Vector3.Dot(normal, candidateNormal)) > 0.999;
+    const distance = Math.abs(Vector3.Dot(normal, p0.subtract(a)));
+    if (aligned && distance <= tolerance) coplanar.push(faceId);
+  }
+
+  console.log(`Selected face group: ${coplanar.join(', ')}`);
+  return coplanar.length ? coplanar : [pickInfo.faceId];
+}
+
+function elementVertexIndices(
+  mesh: Mesh,
+  selectedElements: number[],
+  mode: SubObjectMode
+): number[] {
+  if (mode === 'vertex') return Array.from(new Set(selectedElements));
+  if (mode === 'edge') {
+    const vertices = new Set<number>();
+    selectedElements.forEach((edgeId) => {
+      vertices.add(Math.floor(edgeId / 1000));
+      vertices.add(edgeId % 1000);
+    });
+    return Array.from(vertices);
+  }
+
+  const indices = mesh.getIndices();
+  if (!indices) return [];
+  const vertices = new Set<number>();
+  selectedElements.forEach((faceId) => {
+    const offset = faceId * 3;
+    if (offset + 2 < indices.length) {
+      vertices.add(indices[offset]);
+      vertices.add(indices[offset + 1]);
+      vertices.add(indices[offset + 2]);
+    }
+  });
+  return Array.from(vertices);
+}
+
+function selectedFaceNormal(mesh: Mesh, faceIds: number[]): Vector3 | null {
+  const positions = mesh.getVerticesData('position');
+  const indices = mesh.getIndices();
+  if (!positions || !indices || faceIds.length === 0) return null;
+  const normal = Vector3.Zero();
+  for (const faceId of faceIds) {
+    const offset = faceId * 3;
+    if (offset + 2 >= indices.length) continue;
+    const read = (index: number) => {
+      const i = index * 3;
+      return new Vector3(positions[i], positions[i + 1], positions[i + 2]);
+    };
+    const a = read(indices[offset]);
+    const b = read(indices[offset + 1]);
+    const c = read(indices[offset + 2]);
+    normal.addInPlace(Vector3.Cross(b.subtract(a), c.subtract(a)).normalize());
+  }
+  return normal.lengthSquared() > 1e-8 ? normal.normalize() : null;
 }
 
 /**
@@ -405,7 +485,8 @@ export async function extrudeElements(
   mesh: Mesh,
   selectedElements: number[],
   distance: number,
-  direction?: Vector3
+  direction?: Vector3,
+  mode: SubObjectMode = 'vertex'
 ): Promise<boolean> {
   if (!mesh || selectedElements.length === 0) {
     console.warn('Invalid mesh or no elements selected for extrusion');
@@ -424,10 +505,11 @@ export async function extrudeElements(
     }
 
     const newPositions = [...positions];
-    const extrudeDir = direction || new Vector3(0, 1, 0); // Default upward extrusion
+    const vertexIndices = elementVertexIndices(mesh, selectedElements, mode);
+    const extrudeDir = direction || (mode === 'face' ? selectedFaceNormal(mesh, selectedElements) : null) || new Vector3(0, 1, 0);
     
     // Simple vertex extrusion for demonstration
-    for (const vertexIndex of selectedElements) {
+    for (const vertexIndex of vertexIndices) {
       const i = vertexIndex * 3;
       if (i + 2 < newPositions.length) {
         const offset = extrudeDir.scale(distance);
@@ -462,7 +544,8 @@ export async function extrudeElements(
 export async function bevelElements(
   mesh: Mesh,
   selectedElements: number[],
-  amount: number
+  amount: number,
+  mode: SubObjectMode = 'vertex'
 ): Promise<boolean> {
   if (!mesh || selectedElements.length === 0) {
     console.warn('Invalid mesh or no elements selected for bevel');
@@ -481,18 +564,26 @@ export async function bevelElements(
     }
 
     const newPositions = [...positions];
-    
-    // Simple vertex smoothing for demonstration
-    for (const vertexIndex of selectedElements) {
+    const vertexIndices = elementVertexIndices(mesh, selectedElements, mode);
+    if (vertexIndices.length === 0) return false;
+    const center = vertexIndices.reduce((sum, vertexIndex) => {
+      const i = vertexIndex * 3;
+      return sum.add(new Vector3(newPositions[i], newPositions[i + 1], newPositions[i + 2]));
+    }, Vector3.Zero()).scale(1 / vertexIndices.length);
+    const diagonal = Math.max(0.01, mesh.getBoundingInfo().boundingBox.extendSize.length() * 2);
+    const factor = Math.max(0.5, Math.min(0.98, 1 - amount / diagonal));
+
+    // Pull selected vertices toward their local selection centre. This provides
+    // an immediate mesh bevel for primitives while retaining an editable solid.
+    for (const vertexIndex of vertexIndices) {
       const i = vertexIndex * 3;
       if (i + 2 < newPositions.length) {
-        // Apply a small inward offset to simulate beveling
         const vertex = new Vector3(newPositions[i], newPositions[i + 1], newPositions[i + 2]);
-        const center = vertex.scale(0.95); // Simple inward scaling
-        
-        newPositions[i] = center.x;
-        newPositions[i + 1] = center.y;
-        newPositions[i + 2] = center.z;
+        const moved = center.add(vertex.subtract(center).scale(factor));
+
+        newPositions[i] = moved.x;
+        newPositions[i + 1] = moved.y;
+        newPositions[i + 2] = moved.z;
       }
     }
     

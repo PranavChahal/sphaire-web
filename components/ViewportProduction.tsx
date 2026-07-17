@@ -17,6 +17,8 @@ import '@babylonjs/loaders/STL/stlFileLoader';
 import useStore from '../store/store';
 import type { Shape } from '../store/store';
 import useSceneStore from '../store/sceneStore';
+import { useUIStore } from '../store/uiStore';
+import * as SubObjectEditor from '../utils/subObjectEditor';
 import { useRealtimeCollaboration } from '../hooks/useRealtimeCollaboration';
 import { useRouter } from 'next/router';
 
@@ -26,6 +28,40 @@ interface ViewportProductionProps {
   className?: string;
   style?: React.CSSProperties;
 }
+
+const primitiveGeometrySignature = (shape: Shape): string | null => {
+  if (shape.type === 'box') {
+    return `box:${shape.dimensions.width}:${shape.dimensions.height}:${shape.dimensions.depth}`;
+  }
+  if (shape.type === 'sphere') return `sphere:${shape.radius}`;
+  if (shape.type === 'cylinder') return `cylinder:${shape.diameter}:${shape.height}`;
+  return null;
+};
+
+const rebuildPrimitiveGeometry = (mesh: Mesh, shape: Shape, scene: Scene): boolean => {
+  let template: Mesh | null = null;
+  if (shape.type === 'box') {
+    template = MeshBuilder.CreateBox('__primitive-template', {
+      width: shape.dimensions.width,
+      height: shape.dimensions.height,
+      depth: shape.dimensions.depth,
+    }, scene);
+  } else if (shape.type === 'sphere') {
+    template = MeshBuilder.CreateSphere('__primitive-template', { diameter: shape.radius * 2 }, scene);
+  } else if (shape.type === 'cylinder') {
+    template = MeshBuilder.CreateCylinder('__primitive-template', {
+      height: shape.height,
+      diameter: shape.diameter,
+    }, scene);
+  }
+  if (!template) return false;
+  try {
+    VertexData.ExtractFromMesh(template).applyToMesh(mesh, true);
+    return true;
+  } finally {
+    template.dispose();
+  }
+};
 
 export const ViewportProduction: React.FC<ViewportProductionProps> = ({ 
   viewportRef: _viewportRef, 
@@ -55,8 +91,17 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
   const { 
     _updateShapeDirect: updateShapeDirectly, // Direct update without undo/redo
     _undoRedoSystem: undoRedoSystem, // Undo/redo system for proper tracking
+    selectedShapeId,
+    selectShape,
   } = useStore();
   const { setScene, selectedMeshes, setSelectedMeshes } = useSceneStore();
+  const {
+    activeMesh,
+    subObjectMode,
+    subObjectSelectedElements,
+    setActiveMesh,
+    setSubObjectSelectedElements,
+  } = useUIStore();
   
   
   // COLLABORATIVE FEATURES: Initialize real-time collaboration hook
@@ -666,15 +711,22 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
         
         switch (shape.type) {
           case 'box':
-            mesh = MeshBuilder.CreateBox(shape.id, { size: 2 }, sceneRef.current!);
+            mesh = MeshBuilder.CreateBox(shape.id, {
+              width: shape.dimensions.width,
+              height: shape.dimensions.height,
+              depth: shape.dimensions.depth,
+            }, sceneRef.current!);
             if (mesh) { mesh.setEnabled(true); (mesh as any).isVisible = true; }
             break;
           case 'sphere':
-            mesh = MeshBuilder.CreateSphere(shape.id, { diameter: 2 }, sceneRef.current!);
+            mesh = MeshBuilder.CreateSphere(shape.id, { diameter: shape.radius * 2 }, sceneRef.current!);
             if (mesh) { mesh.setEnabled(true); (mesh as any).isVisible = true; }
             break;
           case 'cylinder':
-            mesh = MeshBuilder.CreateCylinder(shape.id, { height: 2, diameter: 2 }, sceneRef.current!);
+            mesh = MeshBuilder.CreateCylinder(shape.id, {
+              height: shape.height,
+              diameter: shape.diameter,
+            }, sceneRef.current!);
             if (mesh) { mesh.setEnabled(true); (mesh as any).isVisible = true; }
             break;
           case 'model':
@@ -919,6 +971,12 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
             material.diffuseColor = new Color3(0.7, 0.7, 0.7);
           }
           mesh.material = material;
+          mesh.isPickable = true;
+          mesh.metadata = {
+            ...(mesh.metadata || {}),
+            shapeId: shape.id,
+            primitiveSignature: primitiveGeometrySignature(shape) || undefined,
+          };
           
           // REMOVED: onAfterWorldMatrixUpdateObservable to prevent conflicts with gizmo handlers
           // Transform sync is now handled directly by gizmo drag events for maximum smoothness
@@ -928,6 +986,14 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
           
           console.log(`Created mesh for new shape: ${shape.id}`);
         }
+
+        // Creation selects the object in the data store. Mirror that selection as
+        // soon as its mesh exists so the inspector and Move gizmo appear without
+        // requiring a second click on the canvas.
+        const createdMesh = shapeMeshesRef.current.get(shape.id);
+        if (createdMesh && useStore.getState().selectedShapeId === shape.id) {
+          useSceneStore.getState().setSelectedMeshes([createdMesh]);
+        }
       } else {
         // EXISTING MESH: Check if geometry needs rebuilding or just transform update
         const existingMesh = shapeMeshesRef.current.get(shape.id)!;
@@ -935,6 +1001,23 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
         // CRITICAL FIX: Only rebuild geometry if vertex count ACTUALLY CHANGED
         // Don't rebuild for every update - only when meshData is different
         const shapeData = shape as any;
+
+        const nextPrimitiveSignature = primitiveGeometrySignature(shape);
+        if (
+          nextPrimitiveSignature &&
+          (existingMesh.metadata as any)?.primitiveSignature !== nextPrimitiveSignature
+        ) {
+          try {
+            if (rebuildPrimitiveGeometry(existingMesh, shape, sceneRef.current!)) {
+              existingMesh.metadata = {
+                ...(existingMesh.metadata || {}),
+                primitiveSignature: nextPrimitiveSignature,
+              };
+            }
+          } catch (error) {
+            console.error(`Failed to resize primitive ${shape.id}:`, error);
+          }
+        }
         
         if ((shape.type === 'parametric' || shape.type === 'custom') && 
             shapeData.meshData && 
@@ -987,7 +1070,8 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
               // Update version in metadata
               existingMesh.metadata = {
                 ...existingMesh.metadata,
-                version: newVersion
+                version: newVersion,
+                primitiveSignature: undefined,
               };
               
               console.log(`Smoothly updated geometry for: ${shape.id} (no blink!)`);
@@ -1048,12 +1132,6 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
         const currentShapes = useStore.getState().shapes;
         const idsNow = new Set(currentShapes.map(s => s.id));
         console.log(`Deletion check - Current shapes in store:`, Array.from(idsNow), `(${currentShapes.length} total)`);
-        
-        // CRITICAL FIX: If store is empty, DON'T delete anything (likely a race condition)
-        if (currentShapes.length === 0 && toMaybeDelete.length > 0) {
-          console.warn(`SAFETY: Store is empty but meshes exist - skipping deletion to prevent race condition`);
-          return;
-        }
         
         for (const id of toMaybeDelete) {
           if (!idsNow.has(id)) {
@@ -1120,6 +1198,39 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
     const y = event.clientY - rect.top;
     
     const pickInfo = sceneRef.current.pick(x, y);
+
+    // Edit mode owns canvas clicks. Route them into the active mesh's topology
+    // instead of re-selecting the whole object, which previously left the Edit
+    // buttons permanently disabled.
+    if (subObjectMode && activeMesh) {
+      const editShapeId = activeMesh.metadata?.shapeId || activeMesh.name;
+      const editPick = sceneRef.current.pick(x, y, (candidate: any) => {
+        if (!candidate?.geometry) return false;
+        const candidateShapeId = candidate.metadata?.shapeId || candidate.name;
+        return candidate === activeMesh || candidateShapeId === editShapeId;
+      });
+      const editTarget = editPick?.pickedMesh as Mesh | null;
+      if (editPick?.hit && editPick.pickedPoint && editTarget?.geometry) {
+        if (editTarget !== activeMesh) setActiveMesh(editTarget);
+        const radius = Math.max(
+          0.12,
+          editTarget.getBoundingInfo().boundingBox.extendSizeWorld.length() * 0.08
+        );
+        const picked = SubObjectEditor.selectElements(editTarget, subObjectMode, editPick, radius);
+        if (keyboardStateRef.current.shift) {
+          const next = new Set(subObjectSelectedElements);
+          picked.forEach((element) => next.has(element) ? next.delete(element) : next.add(element));
+          setSubObjectSelectedElements(Array.from(next));
+        } else {
+          setSubObjectSelectedElements(picked);
+        }
+      } else {
+        setSubObjectSelectedElements([]);
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     
     // CRITICAL FIX: Do NOT interfere with gizmo interactions
     if (pickInfo.hit && pickInfo.pickedMesh) {
@@ -1153,9 +1264,16 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
         }
         
         setSelectedMeshes(currentSelection);
+        const last = currentSelection[currentSelection.length - 1];
+        const lastId = last?.metadata?.shapeId || last?.name || null;
+        selectShape(lastId && useStore.getState().shapes.some((shape) => shape.id === lastId) ? lastId : null);
       } else {
         // Single selection
         setSelectedMeshes([targetMesh]);
+        const shapeId = targetMesh.metadata?.shapeId || targetMesh.name;
+        if (useStore.getState().shapes.some((shape) => shape.id === shapeId)) {
+          selectShape(shapeId);
+        }
       }
     } else {
       // CRITICAL FIX: Only clear selection if NOT interacting with gizmos
@@ -1171,8 +1289,53 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
       // Clear selection only when clicking truly empty space
       console.log('🔘 EMPTY SPACE CLICKED: Clearing selection');
       setSelectedMeshes([]);
+      selectShape(null);
     }
-  }, [selectedMeshes]);
+  }, [
+    activeMesh,
+    selectShape,
+    selectedMeshes,
+    setActiveMesh,
+    setSelectedMeshes,
+    setSubObjectSelectedElements,
+    subObjectMode,
+    subObjectSelectedElements,
+  ]);
+
+  // Give edit mode an immediate visual state. The topology click is confirmed
+  // with a subtle overlay while the active mesh remains fully visible.
+  useEffect(() => {
+    if (!activeMesh || !subObjectMode) return;
+    activeMesh.enableEdgesRendering();
+    activeMesh.edgesColor = new Color4(0.55, 0.48, 1, 0.9);
+    activeMesh.edgesWidth = 1.5;
+    activeMesh.renderOverlay = subObjectSelectedElements.length > 0;
+    activeMesh.overlayColor = new Color3(0.34, 0.72, 1);
+    activeMesh.overlayAlpha = 0.16;
+    return () => {
+      activeMesh.renderOverlay = false;
+      activeMesh.disableEdgesRendering();
+    };
+  }, [activeMesh, subObjectMode, subObjectSelectedElements.length]);
+
+  // Keep list/inspector selection and the Babylon selection in lockstep. This
+  // makes every entry point (canvas, Objects panel, generation) feel like one UI.
+  useEffect(() => {
+    if (!sceneRef.current) return;
+    if (!selectedShapeId) {
+      if (selectedMeshes.length) setSelectedMeshes([]);
+      return;
+    }
+    const registered = shapeMeshesRef.current.get(selectedShapeId);
+    const renderable = sceneRef.current.meshes.find(
+        (mesh: any) => mesh.metadata?.shapeId === selectedShapeId && !!mesh.geometry
+      );
+    const visualMesh = (registered as any)?.geometry
+      ? registered
+      : renderable || registered || sceneRef.current.getMeshByName(selectedShapeId);
+    if (visualMesh && selectedMeshes.length === 1 && selectedMeshes[0] === visualMesh) return;
+    if (visualMesh) setSelectedMeshes([visualMesh]);
+  }, [selectedShapeId, selectedMeshes, setSelectedMeshes]);
 
   // Keyboard event handling
   const setupKeyboardHandling = useCallback(() => {
@@ -1223,6 +1386,14 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
   useEffect(() => {
     if (!gizmoManagerRef.current) {
       console.warn('GizmoManager not available for mode change');
+      return;
+    }
+
+    if (subObjectMode) {
+      gizmoManagerRef.current.attachToMesh(null);
+      gizmoManagerRef.current.positionGizmoEnabled = false;
+      gizmoManagerRef.current.rotationGizmoEnabled = false;
+      gizmoManagerRef.current.scaleGizmoEnabled = false;
       return;
     }
     
@@ -1557,7 +1728,7 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
       console.log(`Detaching gizmo (no selection)`);
       gizmoManagerRef.current.attachToMesh(null);
     }
-  }, [selectedMeshes, gizmoMode]);
+  }, [selectedMeshes, gizmoMode, subObjectMode]);
 
   // OLD WORKING APPROACH: Initialize GizmoManager directly in scene initialization
   const handleGizmoModeChange = useCallback((mode: GizmoMode) => {
@@ -1592,6 +1763,11 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
       
       // Update scene store
       setScene(scene);
+      // Publish the live scene for the vision-review pipeline and other
+      // deliberately scene-aware services. Keep this as a single canonical ref.
+      if (typeof window !== 'undefined') {
+        (window as any).BABYLON_SCENE = scene;
+      }
       
       // Mark as initialized
       setIsInitialized(true);
@@ -1627,6 +1803,9 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
         
         // Dispose scene and engine
         if (sceneRef.current) {
+          if (typeof window !== 'undefined' && (window as any).BABYLON_SCENE === sceneRef.current) {
+            delete (window as any).BABYLON_SCENE;
+          }
           sceneRef.current.dispose();
         }
         if (engineRef.current) {
@@ -1741,62 +1920,19 @@ export const ViewportProduction: React.FC<ViewportProductionProps> = ({
       />
       
       {/* Gizmo Mode Controls */}
-      {isInitialized && selectedMeshes.length > 0 && (
-        <div style={{
-          position: 'absolute',
-          top: 20,
-          right: 20,
-          display: 'flex',
-          gap: '8px',
-          zIndex: 1000
-        }}>
+      {isInitialized && selectedMeshes.length > 0 && !subObjectMode && (
+        <div className="st-canvas-gizmo" role="toolbar" aria-label="Transform mode">
           {(['position', 'rotation', 'scale'] as const).map((mode) => (
             <button
               key={mode}
               onClick={() => handleGizmoModeChange(mode)}
-              style={{
-                padding: '10px 16px',
-                borderRadius: '8px',
-                border: 'none',
-                background: gizmoMode === mode 
-                  ? 'linear-gradient(135deg, #ff007f, #ff4da6)' 
-                  : 'rgba(0, 0, 0, 0.8)',
-                color: 'white',
-                fontSize: '12px',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                transition: 'all 0.2s ease',
-                textTransform: 'capitalize'
-              }}
+              className={gizmoMode === mode ? 'st-active' : ''}
+              aria-pressed={gizmoMode === mode}
             >
-              {mode === 'position' && '↔️'} {mode === 'rotation' && ''} {mode === 'scale' && '📏'} {mode === 'position' ? 'Move' : mode === 'rotation' ? 'Rotate' : 'Scale'}
+              {mode === 'position' ? 'Move' : mode === 'rotation' ? 'Rotate' : 'Scale'}
+              <kbd>{mode === 'position' ? 'G' : mode === 'rotation' ? 'R' : 'S'}</kbd>
             </button>
           ))}
-        </div>
-      )}
-      
-      {/* Selection Info */}
-      {selectedMeshes.length > 0 && (
-        <div style={{
-          position: 'absolute',
-          bottom: 20,
-          right: 20,
-          background: 'rgba(0, 0, 0, 0.75)',
-          backdropFilter: 'blur(8px)',
-          color: '#e879f9',
-          padding: '6px 12px',
-          borderRadius: '12px',
-          fontSize: '11px',
-          fontWeight: '500',
-          pointerEvents: 'none',
-          zIndex: 1000,
-          border: '1px solid rgba(232, 121, 249, 0.3)',
-          boxShadow: '0 4px 12px rgba(232, 121, 249, 0.15)',
-          fontFamily: 'monospace'
-        }}>
-          <span style={{ opacity: 0.7, marginRight: '6px' }}></span>
-          {selectedMeshes.length} selected · {gizmoMode}
         </div>
       )}
       

@@ -72,17 +72,15 @@ export default async function handler(
     }
   }
   
+  // Never log key material or env-var names — only presence and provenance.
   console.log('API Key check:', {
-    exists: !!apiKey,
-    length: apiKey?.length || 0,
-    starts: apiKey?.substring(0, 10) || 'N/A',
-    pooled: usingKeyPool
+    present: !!apiKey,
+    pooled: usingKeyPool,
   });
-  
+
   if (!apiKey) {
     console.error('OpenAI API key not configured');
-    console.error('Environment variables:', Object.keys(process.env).filter(k => k.includes('OPENAI')));
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: 'OpenAI API key not configured. Please add OPENAI_API_KEY to .env.local and restart the server.' 
     });
   }
@@ -114,13 +112,12 @@ export default async function handler(
     console.log('AI-CODE: Using backend-specific context for:', selectedBackend);
     console.log('AI-CODE: Domain-specific examples loaded based on user prompt');
     
-    // Generate code using OpenAI with intelligent fallback models
-    // Try multiple models in order of preference
+    // Generate code, escalating from a fast/cheap default to a higher-quality model
+    // on failure. Configurable via OPENAI_MODEL. (Legacy gpt-3.5-turbo / gpt-4-turbo-
+    // preview removed — they were slower AND lower quality than the 4o family.)
     const models = [
-      'gpt-4o-mini',           // Best balance (fast, accurate, cheap)
-      'gpt-3.5-turbo',         // Fallback 1 (fast, reliable)
-      'gpt-4-turbo-preview',   // Fallback 2 (high quality)
-      'gpt-4'                  // Fallback 3 (highest quality)
+      process.env.OPENAI_MODEL || 'gpt-4o-mini', // default: fast, cheap, capable
+      'gpt-4o',                                  // escalate to higher quality on failure
     ];
     
     let response;

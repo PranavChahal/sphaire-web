@@ -8,6 +8,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import OpenAI from 'openai';
 import promptContext from '../../services/promptContext';
+import { getKeyPool, initializeKeyPool } from '../../services/apiKeyPool';
 
 // Response types
 interface GenerateModelResponse {
@@ -17,10 +18,27 @@ interface GenerateModelResponse {
   error?: string;
 }
 
-// Initialize OpenAI with API key
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Resolve a key the same way /api/ai-code does: rotating pool, else single env key.
+// (Do NOT init the client at module scope — env vars may not be loaded yet.)
+function resolveApiKey(): string {
+  const multi = process.env.OPENAI_API_KEYS;
+  if (multi && multi.includes(',')) {
+    const keys = multi.split(',').map((k) => k.trim()).filter(Boolean);
+    if (keys.length > 1) {
+      try {
+        initializeKeyPool(keys);
+      } catch {
+        /* already initialized */
+      }
+      try {
+        return getKeyPool().getNextKey();
+      } catch {
+        /* fall through */
+      }
+    }
+  }
+  return process.env.OPENAI_API_KEY || '';
+}
 
 /**
  * API handler that generates 3D model code based on a text specification using OpenAI GPT-4o
@@ -42,9 +60,15 @@ export default async function handler(
     return res.status(400).json({ error: 'Missing or invalid prompt' });
   }
 
+  const apiKey = resolveApiKey();
+  if (!apiKey) {
+    return res.status(500).json({ error: 'OpenAI API key not configured.' });
+  }
+  const openai = new OpenAI({ apiKey });
+
   try {
-    console.log('Generating 3D model with GPT-4o for prompt:', prompt.substring(0, 100) + '...');
-    
+    console.log('Generating 3D model for prompt:', prompt.substring(0, 100) + '...');
+
     // Build context-aware prompts using our prompt engineering system
     const systemPrompt = promptContext.buildSystemPrompt() + `
 

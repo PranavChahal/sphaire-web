@@ -20,9 +20,10 @@ import { OCCShape } from '../hooks/useOCC';
  * @param mesh The Babylon.js mesh to export
  * @returns A Blob containing the STL data
  */
-export const exportSTL = (mesh: Mesh): Blob => {
+export const exportSTL = (mesh: Mesh | Mesh[]): Blob => {
+  const meshes = Array.isArray(mesh) ? mesh : [mesh];
   // Generate the STL string content
-  const stlContent = STLExport.CreateSTL([mesh], false);
+  const stlContent = STLExport.CreateSTL(meshes, false);
   
   // Create a blob with the STL content
   return new Blob([stlContent], { type: 'application/octet-stream' });
@@ -33,9 +34,10 @@ export const exportSTL = (mesh: Mesh): Blob => {
  * @param mesh The Babylon.js mesh to export
  * @returns A Blob containing the OBJ data
  */
-export const exportOBJ = (mesh: Mesh): Blob => {
+export const exportOBJ = (mesh: Mesh | Mesh[]): Blob => {
+  const meshes = Array.isArray(mesh) ? mesh : [mesh];
   // Generate the OBJ content
-  const objContent = OBJExport.OBJ([mesh], true);
+  const objContent = OBJExport.OBJ(meshes, true);
   
   // Create a blob with the OBJ content
   return new Blob([objContent], { type: 'application/octet-stream' });
@@ -46,9 +48,16 @@ export const exportOBJ = (mesh: Mesh): Blob => {
  * @param scene The Babylon.js scene to export
  * @returns A Promise resolving to a Blob containing the GLTF data
  */
-export const exportGLTF = async (scene: Scene): Promise<Blob> => {
+export const exportGLTF = async (
+  scene: Scene,
+  shouldExportNode?: (node: import('@babylonjs/core/node').Node) => boolean
+): Promise<Blob> => {
   // Create a GLTF with the scene data
-  const gltfData = await GLTF2Export.GLBAsync(scene, 'model');
+  const gltfData = await GLTF2Export.GLBAsync(
+    scene,
+    'model',
+    shouldExportNode ? { shouldExportNode } : undefined
+  );
   
   // Return the blob from the GLTF data
   return gltfData.glTFFiles['model.glb'] as Blob;
