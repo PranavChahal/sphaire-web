@@ -1,0 +1,18 @@
+services:
+  sphaire:
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+    ports:
+      - "${SPHAIRE_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_API_KEYS: ${OPENAI_API_KEYS:-}
+      REPLICATE_API_TOKEN: ${REPLICATE_API_TOKEN:-}
+      MESH_GEN_MODEL: ${MESH_GEN_MODEL:-}
+      MESH_GEN_INPUT_KEY: ${MESH_GEN_INPUT_KEY:-images}
+    restart: unless-stopped

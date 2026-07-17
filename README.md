@@ -1,47 +1,51 @@
-# Sphaire
+<p align="center">
+  <img src="public/og-image.png" alt="Sphaire logo" width="112" />
+</p>
 
-Sphaire is an open-source, browser-native 3D design studio. Describe a part in plain
-English, create or import geometry, edit it visually, apply materials, inspect the
-generated construction code, and export the result—all from the browser.
+<h1 align="center">Sphaire</h1>
 
-The project combines an AI-assisted workflow with real geometry tools. Parametric
-models are built with OpenCascade or Replicad, displayed with Babylon.js, checked for
-basic manufacturability, and kept editable instead of being reduced to a static image.
+<p align="center">
+  Open-source, browser-native, AI-assisted parametric CAD.
+</p>
 
-> Sphaire is early-stage software. It is useful for experimentation and rapid design,
-> but generated models and manufacturability checks should be reviewed before making
-> safety-critical or production parts.
+<p align="center">
+  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-8b5cf6.svg" /></a>
+  <a href="package.json"><img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.x-3178c6.svg" /></a>
+  <a href="https://dev.opencascade.org/"><img alt="OpenCascade" src="https://img.shields.io/badge/kernel-OpenCascade-ef4444.svg" /></a>
+  <a href="https://webassembly.org/"><img alt="WebAssembly" src="https://img.shields.io/badge/runtime-WebAssembly-654ff0.svg" /></a>
+</p>
 
-## What you can do
+Sphaire is a 3D design studio that runs its geometry engine in the browser. Describe a
+part in plain English, start from a primitive, or import an existing model; then edit,
+inspect, materialize, validate, and export it from one workspace.
 
-- Create boxes, spheres, cylinders, and AI-generated parametric parts.
-- Generate known parts such as spur gears with deterministic recipes.
-- Import GLB, GLTF, OBJ, and STL models.
-- Select, move, rotate, scale, resize, and edit mesh components.
-- Apply colors, tune metallic and roughness values, upload image textures, or generate
-  AI materials.
-- Inspect and rebuild editable construction code.
-- Check geometry and common FDM, SLA, and CNC manufacturability concerns.
-- Export models for use in other 3D tools.
-- Use an OpenAI-compatible provider or run supported models locally with Ollama.
+Unlike image-only 3D generation, Sphaire's engineering path produces executable
+construction code and real geometry through OpenCascade or Replicad. Babylon.js
+renders the scene, deterministic checks review common manufacturability concerns, and
+optional AI providers help generate and visually review results.
 
-## How the creation loop works
+> [!WARNING]
+> Sphaire is experimental engineering software. Always inspect geometry and run the
+> appropriate professional checks before manufacturing, especially for structural,
+> medical, electrical, automotive, or other safety-critical parts.
 
-```text
-Describe → classify → plan → build geometry → validate → check DFM → review → export
-```
+## Highlights
 
-Sphaire routes engineering parts through a parametric CAD pipeline and can route more
-organic requests through an optional mesh-generation provider. Every optional system
-is designed to fail gracefully: missing vision, embeddings, or mesh generation should
-not prevent the core editor from working.
+| Capability | What it provides |
+| --- | --- |
+| Text-to-CAD | Natural-language creation with parametric and organic routing |
+| Browser CAD kernel | OpenCascade and Replicad running through WebAssembly |
+| Direct modeling | Select, move, rotate, scale, resize, and edit mesh components |
+| Imports | GLB, GLTF, OBJ, and STL model workflows |
+| Materials | Color, metallic/roughness, image textures, and optional AI materials |
+| Inspectable code | View and rebuild generated construction code |
+| Verification | Geometry validation and FDM, SLA, or CNC-oriented DFM checks |
+| Export | Move results into downstream 3D and manufacturing tools |
+| Provider choice | Server-configured OpenAI-compatible APIs, BYO key, or local Ollama |
 
 ## Quick start
 
-Requirements:
-
-- Node.js 18 or newer
-- npm
+You need Node.js 20 or newer and npm.
 
 ```bash
 git clone https://github.com/sphaire3d/shaire-web-V2-beta.git
@@ -51,68 +55,124 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000). An API key is optional for manual
+modeling, imports, materials, transforms, and exports; AI generation requires either a
+configured provider or local Ollama.
 
-The development and production scripts copy the required Replicad WebAssembly asset
-from `node_modules` automatically. Generated WASM output is not committed.
+## Try these prompts
 
-## AI setup
+```text
+Create a 24-tooth spur gear.
 
-You have three options:
+Create an L-shaped mounting bracket, 60 mm wide and 40 mm tall, with two 5 mm mounting holes.
 
-1. Add `OPENAI_API_KEY` to `.env.local` for the server-configured provider.
-2. Open **Intelligence settings** in Sphaire and bring your own OpenAI-compatible API
-   key and base URL. The key stays in that browser's local storage.
-3. Choose **Local · Ollama** to use locally hosted chat, vision, and embedding models.
+Create a phone stand with a 70-degree backrest, a 12 mm front lip, and a charging-cable opening.
 
-All environment variables are documented in [`.env.example`](.env.example). Never
-commit `.env.local` or a real API key.
+Create a circular flange with an 80 mm outer diameter, a 30 mm center bore, and six evenly spaced bolt holes.
 
-Optional organic mesh generation uses `REPLICATE_API_TOKEN` and `MESH_GEN_MODEL`.
-Without them, Sphaire continues with its parametric workflow.
-
-## Useful commands
-
-```bash
-npm run dev        # Start the local development server
-npm run typecheck  # Check TypeScript
-npm test           # Run the test suite
-npm run build      # Create a production build
-npm start          # Run the production build
+Create a ventilated electronics enclosure, 100 × 70 × 30 mm, with 2 mm walls and four corner mounting posts.
 ```
 
-## Project structure
+See [Five example prompts](docs/EXAMPLE_PROMPTS.md) for intent, expected behavior, and
+iteration tips.
 
-| Area | Location |
-| --- | --- |
-| Studio interface | `components/studio/` |
-| 3D viewport | `components/ViewportProduction.tsx` |
-| Creation pipeline | `services/pipeline/` |
-| CAD backends | `services/backends/`, `utils/occ-wrapper.ts` |
-| Geometry validation and sandboxing | `services/sandbox/` |
-| Manufacturability checks | `services/dfm/` |
-| Provider integrations | `services/providers/`, `pages/api/llm.ts` |
-| Visual review | `services/vision/` |
-| Application state | `store/` |
+## AI configuration
 
-For a deeper technical map, read [ARCHITECTURE.md](ARCHITECTURE.md). To contribute,
-read [CONTRIBUTING.md](CONTRIBUTING.md).
+Choose one of these paths:
+
+1. Put `OPENAI_API_KEY` in `.env.local` to use the server-configured provider.
+2. Open **Intelligence settings** and enter an OpenAI-compatible key and base URL. The
+   key is stored in that browser and sent only through the selected provider path.
+3. Choose **Local · Ollama** to call locally hosted chat, vision, and embedding models.
+
+Optional organic mesh generation uses `REPLICATE_API_TOKEN` and `MESH_GEN_MODEL`.
+Without them, Sphaire stays on its parametric path. All supported variables and safe
+placeholders live in [`.env.example`](.env.example).
+
+## Self-hosting
+
+### Docker Compose
+
+```bash
+cp .env.example .env.local
+# Edit .env.local if you want server-side AI features.
+docker compose --env-file .env.local up --build
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+### Docker
+
+```bash
+docker build -t sphaire .
+docker run --rm -p 3000:3000 --env-file .env.local sphaire
+```
+
+### Node.js production server
+
+```bash
+npm ci
+npm run build
+npm start
+```
+
+The build scripts copy the required Replicad WebAssembly asset from `node_modules`.
+Generated WASM output is intentionally excluded from Git.
+
+## Development commands
+
+```bash
+npm run dev        # Local development server
+npm run typecheck  # TypeScript validation
+npm test           # Supported unit and geometry tests
+npm run build      # Optimized production build
+npm start          # Serve the production build
+```
+
+## How it fits together
+
+```text
+Prompt or manual edit
+        ↓
+Studio state → CAD construction → geometry validation → DFM / visual review
+        ↓                                      ↑
+Babylon.js viewport ← editable mesh/result ← correction loop
+        ↓
+Export or continue editing
+```
+
+The detailed, code-linked architecture diagram is in
+[ARCHITECTURE.md](ARCHITECTURE.md).
+
+## Project documentation
+
+- [Architecture](ARCHITECTURE.md)
+- [Example prompts](docs/EXAMPLE_PROMPTS.md)
+- [Public roadmap](ROADMAP.md)
+- [Contributing](CONTRIBUTING.md)
+- [Security policy](SECURITY.md)
+
+## Project status
+
+Sphaire is in active development. The current focus is predictable creation,
+selection/editing reliability, import fidelity, safe provider behavior, and trustworthy
+exports. See the [public roadmap](ROADMAP.md) before relying on a planned capability.
 
 ## Open source means open
 
-Sphaire is released under the [MIT License](LICENSE). You may use it for personal or
-commercial work, copy it, modify it, fork it, redistribute it, include it in another
-product, or sell software built with it. You do not need to ask us for permission.
+Sphaire is released under the [MIT License](LICENSE). You may use it personally or
+commercially, copy it, modify it, fork it, redistribute it, include it in another
+product, or sell software built with it. You do not need to ask permission.
 
-The only license requirement is to keep the MIT copyright and permission notice with
-copies or substantial portions of the software. The software is provided without a
-warranty.
+The license requires preserving the MIT copyright and permission notice in copies or
+substantial portions of the software. The software is provided without warranty.
 
 ## Contributing
 
-Issues, experiments, documentation improvements, new CAD recipes, fabrication
-profiles, bug fixes, and pull requests are welcome. Please do not include secrets,
-private models, or third-party assets you do not have permission to redistribute.
+Bug reports, documentation, CAD recipes, fabrication profiles, provider integrations,
+accessibility improvements, and pull requests are welcome. Start with
+[CONTRIBUTING.md](CONTRIBUTING.md). Please report vulnerabilities privately according
+to [SECURITY.md](SECURITY.md).
 
 ## License
 

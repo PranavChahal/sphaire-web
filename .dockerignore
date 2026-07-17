@@ -1,0 +1,19 @@
+.git
+.github
+.next
+.vercel
+node_modules
+coverage
+test-results
+playwright-report
+public/replicad
+skillorix fixed
+
+.env
+.env.*
+!.env.example
+
+*.log
+*.tmp
+*.bak
+.DS_Store
