@@ -5,8 +5,8 @@ contributors uncover geometry, browser, or provider constraints.
 
 ## Now — reliability and trust
 
-- Upgrade the legacy Next.js and Bitbybit dependency lines, eliminate production audit
-  findings, and keep automated dependency review green before a stable release.
+- Keep production dependency audits green and schedule framework upgrades before
+  supported release lines reach end of life.
 - Make selection, transforms, and edit-mode feedback predictable across primitives and
   imported model hierarchies.
 - Improve import fidelity for materials, hierarchy, scale, and common GLB/GLTF/OBJ/STL
