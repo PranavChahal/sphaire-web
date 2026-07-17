@@ -321,13 +321,13 @@ const StudioShell: React.FC<{ fileId?: string }> = ({ fileId }) => {
         <div className="st-topbar-group">
           <a
             className="st-open-source"
-            href="https://github.com/sphaire3d/shaire-web-V2-beta"
+            href="https://github.com/PranavChahal/shaire-web-V2-beta"
             target="_blank"
             rel="noreferrer"
             aria-label="Sphaire open-source repository on GitHub"
           >
             <span>Open source</span>
-            <span className="st-open-source-url">github.com/sphaire3d ↗</span>
+            <span className="st-open-source-url">github.com/PranavChahal ↗</span>
           </a>
           <span className="st-topbar-sep" />
           <button className="st-iconbtn" data-tip="Undo · ⌘Z" disabled={!historyState.canUndo} onClick={() => undoRedo?.undo()}>
