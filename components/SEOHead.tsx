@@ -156,7 +156,7 @@ export const SEOHead: React.FC<SEOHeadProps> = ({
               // Add your social media URLs here when available
               // 'https://twitter.com/sphaire3d',
               // 'https://linkedin.com/company/sphaire3d',
-              // 'https://github.com/PranavChahal'
+              // 'https://github.com/sphaire3d'
             ],
             contactPoint: {
               '@type': 'ContactPoint',

@@ -44,7 +44,7 @@ Requirements:
 - npm
 
 ```bash
-git clone https://github.com/PranavChahal/shaire-web-V2-beta.git
+git clone https://github.com/sphaire3d/shaire-web-V2-beta.git
 cd shaire-web-V2-beta
 npm install
 cp .env.example .env.local
